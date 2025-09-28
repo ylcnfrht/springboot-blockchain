@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: blockchain-api
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/blockchain_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update   # create, create-drop, validate, none de seçebilirsin
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+
+  jackson:
+    default-property-inclusion: non_null
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+    try-it-out-enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    doc-expansion: none
+  show-actuator: true
+  group-configs:
+    - group: blockchain-api
+      display-name: Blockchain API
+      paths-to-match: /api/**
+
+logging:
+  level:
+    com.blockchain.demo: DEBUG
+    org.hibernate.SQL: DEBUG
+
+blockchain:
+  mining:
+    difficulty: 4
+    reward: 100
