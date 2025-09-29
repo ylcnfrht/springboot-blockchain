@@ -1,54 +1,80 @@
 package com.ylcnfrht.blockchain.domain.wallet;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import com.ylcnfrht.blockchain.domain.common.BaseEntity;
+import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
+import com.ylcnfrht.blockchain.domain.transaction.valueobjects.Amount;
+import com.ylcnfrht.blockchain.domain.wallet.valueobjects.Address;
+import com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance;
 
-@Entity
-@Table(name = "wallets")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class Wallet {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @EqualsAndHashCode.Include
-  private Long id;
+public class Wallet extends BaseEntity<Id<Long>> {
 
-  @Column(unique = true, nullable = false)
-  @EqualsAndHashCode.Include
-  private String address;
-
-  @Column(name = "public_key", columnDefinition = "TEXT", nullable = false)
+  private Address address;
   private String publicKey;
-
-  @Column(name = "private_key", columnDefinition = "TEXT", nullable = false)
-  @ToString.Exclude
   private String privateKey;
+  private Balance balance;
 
-  @Column(nullable = false, precision = 19, scale = 8)
-  @Builder.Default
-  private BigDecimal balance = BigDecimal.ZERO;
+  private Wallet() {
+    super();
+    this.balance = Balance.of(BigDecimal.ZERO);
+  }
 
-  @Column(nullable = false)
-  @Builder.Default
-  private LocalDateTime createdAt = LocalDateTime.now();
+  public static Wallet create(Address address, String publicKey, String privateKey) {
+    Wallet wallet = new Wallet();
+    wallet.address = address;
+    wallet.publicKey = publicKey;
+    wallet.privateKey = privateKey;
+    return wallet;
+  }
 
-  @Column(nullable = false)
-  @Builder.Default
-  private Boolean active = true;
+  public static Wallet of(Id<Long> id, Address address, String publicKey, String privateKey, Balance balance, Boolean active) {
+    Wallet wallet = new Wallet();
+    wallet.setId(id);
+    wallet.address = address;
+    wallet.publicKey = publicKey;
+    wallet.privateKey = privateKey;
+    wallet.balance = balance != null ? balance : Balance.of(BigDecimal.ZERO);
+    if (active != null) {
+      wallet.setIsActive(active);
+    }
+    return wallet;
+  }
+
+  public Address getAddress() {
+    return address;
+  }
+
+  public String getPublicKey() {
+    return publicKey;
+  }
+
+  public String getPrivateKey() {
+    return privateKey;
+  }
+
+  public Balance getBalance() {
+    return balance;
+  }
+
+  public void credit(Amount amount) {
+    this.balance = this.balance.add(amount);
+    markAsModified();
+  }
+
+  public void debit(Amount amount) {
+    this.balance = this.balance.subtract(amount);
+    markAsModified();
+  }
+
+  public void rotateKeys(String newPublicKey, String newPrivateKey) {
+    this.publicKey = newPublicKey;
+    this.privateKey = newPrivateKey;
+    markAsModified();
+  }
+
+  public void setBalance(Balance newBalance) {
+    this.balance = newBalance;
+    markAsModified();
+  }
 }

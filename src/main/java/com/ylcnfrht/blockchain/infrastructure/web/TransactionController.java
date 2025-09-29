@@ -13,9 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.ylcnfrht.blockchain.application.transaction.TransactionApplicationService;
-import com.ylcnfrht.blockchain.domain.blockchain.Transaction;
-import com.ylcnfrht.blockchain.infrastructure.web.dto.request.CreateTransactionRequest;
+import com.ylcnfrht.blockchain.application.dtos.request.CreateTransactionRequestDto;
+import com.ylcnfrht.blockchain.application.dtos.response.CreateTransactionResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.TransactionResponseDto;
+import com.ylcnfrht.blockchain.application.ports.TransactionService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 @Tag(name = "Transactions", description = "Transaction management operations")
 public class TransactionController {
 
-  private final TransactionApplicationService transactionService;
+  private final TransactionService transactionService;
 
   @GetMapping
   @Operation(summary = "Get all transactions", description = "Retrieve all transactions including both pending and confirmed transactions")
@@ -43,7 +44,7 @@ public class TransactionController {
       @ApiResponse(responseCode = "200", description = "Successfully retrieved all transactions"),
       @ApiResponse(responseCode = "500", description = "Internal server error")
   })
-  public ResponseEntity<List<Transaction>> getAllTransactions() {
+  public ResponseEntity<List<TransactionResponseDto>> getAllTransactions() {
     log.info("Getting all transactions");
     return ResponseEntity.ok(transactionService.getAllTransactions());
   }
@@ -55,7 +56,7 @@ public class TransactionController {
       @ApiResponse(responseCode = "404", description = "Transaction not found"),
       @ApiResponse(responseCode = "400", description = "Invalid transaction ID format")
   })
-  public ResponseEntity<Transaction> getTransactionById(
+  public ResponseEntity<TransactionResponseDto> getTransactionById(
       @Parameter(description = "Database ID of the transaction", example = "1") @PathVariable Long id) {
     log.info("Getting transaction by id: {}", id);
     return transactionService.getTransactionById(id)
@@ -70,7 +71,7 @@ public class TransactionController {
       @ApiResponse(responseCode = "404", description = "Transaction not found"),
       @ApiResponse(responseCode = "400", description = "Invalid hash format")
   })
-  public ResponseEntity<Transaction> getTransactionByHash(
+  public ResponseEntity<TransactionResponseDto> getTransactionByHash(
       @Parameter(description = "Cryptographic hash of the transaction", example = "abc123def...") @PathVariable String hash) {
     log.info("Getting transaction by hash: {}", hash);
     return transactionService.getTransactionByHash(hash)
@@ -84,7 +85,7 @@ public class TransactionController {
       @ApiResponse(responseCode = "200", description = "Transactions retrieved successfully"),
       @ApiResponse(responseCode = "400", description = "Invalid address format")
   })
-  public ResponseEntity<List<Transaction>> getTransactionsByAddress(
+  public ResponseEntity<List<TransactionResponseDto>> getTransactionsByAddress(
       @Parameter(description = "Wallet address to search for", example = "wallet123abc...") @PathVariable String address) {
     log.info("Getting transactions for address: {}", address);
     return ResponseEntity.ok(transactionService.getTransactionsByAddress(address));
@@ -96,7 +97,7 @@ public class TransactionController {
       @ApiResponse(responseCode = "200", description = "Pending transactions retrieved successfully"),
       @ApiResponse(responseCode = "500", description = "Internal server error")
   })
-  public ResponseEntity<List<Transaction>> getPendingTransactions() {
+  public ResponseEntity<List<TransactionResponseDto>> getPendingTransactions() {
     log.info("Getting pending transactions");
     return ResponseEntity.ok(transactionService.getPendingTransactions());
   }
@@ -104,15 +105,15 @@ public class TransactionController {
   @PostMapping
   @Operation(summary = "Create a new transaction", description = "Create a new transaction and add it to the pending transactions pool")
   @ApiResponses({
-      @ApiResponse(responseCode = "201", description = "Transaction created successfully", content = @Content(schema = @Schema(implementation = Transaction.class))),
+      @ApiResponse(responseCode = "201", description = "Transaction created successfully", content = @Content(schema = @Schema(implementation = CreateTransactionResponseDto.class))),
       @ApiResponse(responseCode = "400", description = "Invalid transaction data or insufficient balance"),
       @ApiResponse(responseCode = "422", description = "Transaction validation failed")
   })
-  public ResponseEntity<Transaction> createTransaction(
-      @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Transaction details", required = true) @Valid @RequestBody CreateTransactionRequest request) {
+  public ResponseEntity<CreateTransactionResponseDto> createTransaction(
+      @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Transaction details", required = true) @Valid @RequestBody CreateTransactionRequestDto request) {
     log.info("Creating transaction from {} to {} amount {}",
         request.getFromAddress(), request.getToAddress(), request.getAmount());
-    Transaction transaction = transactionService.createTransaction(request);
+    CreateTransactionResponseDto transaction = transactionService.createTransaction(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(transaction);
   }
 
@@ -124,9 +125,9 @@ public class TransactionController {
       @ApiResponse(responseCode = "400", description = "Invalid transaction data"),
       @ApiResponse(responseCode = "409", description = "Transaction is already mined and cannot be updated")
   })
-  public ResponseEntity<Transaction> updateTransaction(
+  public ResponseEntity<TransactionResponseDto> updateTransaction(
       @Parameter(description = "Database ID of the transaction to update", example = "1") @PathVariable Long id,
-      @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated transaction details", required = true) @Valid @RequestBody CreateTransactionRequest request) {
+      @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated transaction details", required = true) @Valid @RequestBody CreateTransactionRequestDto request) {
     log.info("Updating transaction with id: {}", id);
     return transactionService.updateTransaction(id, request)
         .map(ResponseEntity::ok)

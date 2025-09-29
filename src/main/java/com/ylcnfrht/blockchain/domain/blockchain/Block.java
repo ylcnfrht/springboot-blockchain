@@ -1,67 +1,140 @@
 package com.ylcnfrht.blockchain.domain.blockchain;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Nonce;
+import com.ylcnfrht.blockchain.domain.common.BaseEntity;
+import com.ylcnfrht.blockchain.domain.common.DomainException;
+import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
+import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
+import com.ylcnfrht.blockchain.domain.common.valueobjects.Timestamp;
+import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+public class Block extends BaseEntity<Id<Long>> {
 
-@Entity
-@Table(name = "blocks")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class Block {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @EqualsAndHashCode.Include
-  private Long id;
+  private Hash hash;
+  private Hash previousHash;
+  private Timestamp timestamp;
+  private Nonce nonce;
+  private boolean mined;
+  private final List<Transaction> transactions;
 
-  @Column(unique = true, nullable = false)
-  @EqualsAndHashCode.Include
-  private String hash;
+  private Block() {
+    super();
+    this.timestamp = Timestamp.now();
+    this.nonce = Nonce.zero();
+    this.mined = false;
+    this.transactions = new ArrayList<>();
+  }
 
-  @Column(name = "previous_hash")
-  private String previousHash;
+  public static Block create(Hash previousHash) {
+    Block block = new Block();
+    block.previousHash = previousHash;
+    block.recalculateHash();
+    return block;
+  }
 
-  @Column(nullable = false)
-  @Builder.Default
-  private LocalDateTime timestamp = LocalDateTime.now();
+  public static Block of(Id<Long> id,
+      Hash hash,
+      Hash previousHash,
+      Timestamp timestamp,
+      Nonce nonce,
+      boolean mined) {
+    Block block = new Block();
+    block.setId(id);
+    block.hash = hash;
+    block.previousHash = previousHash;
+    block.timestamp = timestamp;
+    block.nonce = nonce;
+    block.mined = mined;
+    return block;
+  }
 
-  @Column(nullable = false)
-  @Builder.Default
-  private Integer nonce = 0;
+  public void addTransaction(Transaction tx) {
+    if (mined) {
+      throw new DomainException("Cannot add transaction to a mined block");
+    }
+    if (tx == null || !tx.isValid()) {
+      throw new DomainException("Invalid transaction");
+    }
+    transactions.add(tx);
+    recalculateHash();
+    markAsModified();
+  }
 
-  @Column(nullable = false)
-  @Builder.Default
-  private Boolean mined = false;
+  public void incrementNonce() {
+    if (mined) {
+      throw new DomainException("Cannot change nonce of a mined block");
+    }
+    this.nonce = this.nonce.increment();
+    recalculateHash();
+    markAsModified();
+  }
 
-  @OneToMany(mappedBy = "block", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-  @JsonManagedReference
-  @Builder.Default
-  @ToString.Exclude
-  private List<Transaction> transactions = new ArrayList<>();
+  public boolean meetsDifficulty(int difficulty) {
+    return hash != null && hash.startsWithZeros(difficulty);
+  }
 
-  public void addTransaction(Transaction transaction) {
-    transactions.add(transaction);
-    transaction.setBlock(this);
+  public void markAsMined(int difficulty) {
+    if (!meetsDifficulty(difficulty)) {
+      throw new DomainException("Block does not meet required difficulty");
+    }
+    this.mined = true;
+    markAsModified();
+  }
+
+  public boolean isMined() {
+    return mined;
+  }
+
+  public boolean isValid() {
+    return hash != null
+        && hash.equals(Hash.generate(canonicalData()))
+        && (previousHash == null || !previousHash.equals(hash));
+  }
+
+  public Hash getHash() {
+    return hash;
+  }
+
+  public Hash getPreviousHash() {
+    return previousHash;
+  }
+
+  public Timestamp getTimestamp() {
+    return timestamp;
+  }
+
+  public Nonce getNonce() {
+    return nonce;
+  }
+
+  public List<Transaction> getTransactions() {
+    return Collections.unmodifiableList(transactions);
+  }
+
+  private void recalculateHash() {
+    this.hash = Hash.generate(canonicalData());
+  }
+
+  private String canonicalData() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(previousHash != null ? previousHash.getValue() : "");
+    sb.append(timestamp.getValue());
+    sb.append(nonce.getValue());
+
+    for (Transaction tx : transactions) {
+      sb.append(tx.getId() != null ? tx.getId().getValue() : "");
+    }
+    
+    return sb.toString();
+  }
+
+  @Override
+  public String toString() {
+    return String.format("Block{id=%s, hash=%s, prev=%s, nonce=%s, mined=%s, txCount=%d}",
+        getId(), hash, previousHash, nonce, mined, transactions.size());
   }
 }
