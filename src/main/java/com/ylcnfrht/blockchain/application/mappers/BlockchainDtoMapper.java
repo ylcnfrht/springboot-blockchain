@@ -40,6 +40,18 @@ public class BlockchainDtoMapper {
         .build();
   }
 
+  public BlockResponseDto toBlockResponseDto(Block block, java.util.List<Transaction> transactions) {
+    return BlockResponseDto.builder()
+        .id(block.getId() != null ? block.getId().getValue() : null)
+        .hash(block.getHash() != null ? block.getHash().getValue() : null)
+        .previousHash(block.getPreviousHash() != null ? block.getPreviousHash().getValue() : null)
+        .nonce(block.getNonce() != null ? block.getNonce().getValue() : null)
+        .timestamp(block.getTimestamp() != null ? block.getTimestamp().getValue() : null)
+        .mined(block.isMined())
+        .transactions(transactions.stream().map(this::toTransactionResponseDto).toList())
+        .build();
+  }
+
   public TransactionResponseDto toTransactionResponseDto(Transaction transaction) {
     return TransactionResponseDto.builder()
         .id(transaction.getId() != null ? transaction.getId().getValue() : null)

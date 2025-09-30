@@ -16,6 +16,7 @@ public interface TransactionRepositoryPort extends ReadRepository<Transaction, I
   List<Transaction> findByAddress(Address address);
   List<Transaction> findPending();
   Transaction saveWithBlock(Transaction transaction, Block block);
+  List<Transaction> findByBlockId(Id<Long> blockId);
 }
 
 

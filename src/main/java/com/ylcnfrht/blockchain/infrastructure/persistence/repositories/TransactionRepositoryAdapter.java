@@ -85,6 +85,11 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
   }
 
   @Override
+  public List<Transaction> findByBlockId(Id<Long> blockId) {
+    return jpaRepository.findByBlock_Id(blockId.getValue()).stream().map(mapper::toDomain).toList();
+  }
+
+  @Override
   public void deleteById(Id<Long> id) {
     jpaRepository.deleteById(id.getValue());
   }

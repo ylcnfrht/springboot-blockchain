@@ -22,6 +22,8 @@ public interface TransactionJpaRepository extends JpaRepository<TransactionEntit
 
   List<TransactionEntity> findByBlockIsNull();
 
+  List<TransactionEntity> findByBlock_Id(Long blockId);
+
   @Query("SELECT t FROM TransactionEntity t WHERE t.mined = true")
   List<TransactionEntity> findMinedTransactions();
 

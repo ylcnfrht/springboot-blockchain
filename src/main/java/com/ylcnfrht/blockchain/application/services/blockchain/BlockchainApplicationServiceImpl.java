@@ -53,7 +53,10 @@ public class BlockchainApplicationServiceImpl implements BlockchainApplicationSe
       List<Block> blocks = blockRepository.findAllOrderByIdDesc();
       log.info("Successfully retrieved {} blocks", blocks.size());
       return blocks.stream()
-          .map(blockchainDtoMapper::toBlockResponseDto)
+          .map(b -> {
+            var txs = transactionRepository.findByBlockId(b.getId());
+            return blockchainDtoMapper.toBlockResponseDto(b, txs);
+          })
           .toList(); 
     } catch (Exception e) {
       log.error("Error getting all blocks", e);
