@@ -114,6 +114,27 @@ This project implements a **Clean Architecture** with **Domain-Driven Design (DD
 5. **Security enhancements** (JWT authentication, rate limiting, CORS configuration, etc.)
 6. **Caching strategies** (e.g., blockchain validation, wallet balance queries)
 7. **Message Queue integration** (Kafka / RabbitMQ for transaction publish & subscribe)
+8. **Hash wallet keys at rest** (store public/private keys hashed with salt)
+
+### Swagger Documentation
+
+![Swagger Overview](assets/swagger-1.png)
+
+#### Blockchain
+
+![Swagger Blockchain](assets/swagger-2.png)
+
+#### Transaction
+
+![Swagger Transaction](assets/swagger-3.png)
+
+#### Wallet
+
+![Swagger Wallet](assets/swagger-4.png)
+
+### Database Diagram
+
+![Database Diagram](assets/db-diagram.png)
 
 ## 📁 Project Structure
 
@@ -154,8 +175,6 @@ src/main/java/com/ylcnfrht/blockchain/
 │   └── web/                       # Web Layer
 │       ├── result/                # Result Pattern Implementation
 │       └── *Controller.java       # REST Controllers
-└── shared/                        # Shared Utilities
-    └── HashUtils.java             # Cryptographic Utilities
 ```
 
 ## 🔧 Configuration
@@ -345,6 +364,62 @@ logging:
     com.ylcnfrht.blockchain: DEBUG
     org.hibernate.SQL: DEBUG
 ```
+
+## 🗄️ Database Schema (Text-Based)
+
+The application uses MySQL with three main tables: `blocks`, `transactions`, and `wallets`.
+
+### Tables
+
+```sql
+-- blocks: one row per mined block
+CREATE TABLE blocks (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  hash VARCHAR(255) NOT NULL UNIQUE,
+  previous_hash VARCHAR(255),
+  timestamp DATETIME NOT NULL,
+  nonce INT NOT NULL,
+  mined BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- transactions: transfer and coinbase (reward) records
+CREATE TABLE transactions (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  from_address VARCHAR(255),          -- NULL for coinbase (reward) tx
+  to_address VARCHAR(255) NOT NULL,
+  amount DECIMAL(19,8) NOT NULL,
+  signature TEXT,                     -- optional; present if signed
+  timestamp DATETIME,                 -- creation time
+  transaction_hash VARCHAR(255),      -- optional domain hash
+  mined BOOLEAN NOT NULL DEFAULT FALSE,
+  block_id BIGINT,                    -- FK to blocks.id (NULL if pending)
+  CONSTRAINT fk_transactions_block
+    FOREIGN KEY (block_id) REFERENCES blocks(id)
+);
+
+-- wallets: registered wallet records
+CREATE TABLE wallets (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  address VARCHAR(255) NOT NULL UNIQUE,  -- human-readable address
+  public_key TEXT NOT NULL,              -- TODO: store hashed (see Roadmap)
+  private_key TEXT NOT NULL,             -- TODO: store hashed (see Roadmap)
+  balance DECIMAL(19,8) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+```
+
+### Relationships
+
+- `blocks (1) —— (n) transactions`: `transactions.block_id` references `blocks.id`.
+- `wallets` are not hard-FK’d to transactions by design; `transactions.from_address`/`to_address` store address strings to allow external addresses and simpler pending handling.
+
+### Notes
+
+- Pending transactions have `block_id = NULL` and `mined = FALSE`.
+- When a block is mined, included transactions are persisted with `mined = TRUE` and `block_id = <new block id>`.
+- Coinbase (reward) transactions have `from_address = NULL` and are always appended last in a block.
+- Balances are computed from the ledger; `wallets.balance` is kept in sync after mining for quick reads.
 
 ### Health Checks
 
