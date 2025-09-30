@@ -18,6 +18,8 @@ import com.ylcnfrht.blockchain.domain.blockchain.Block;
 import com.ylcnfrht.blockchain.domain.blockchain.BlockRepositoryPort;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
+import com.ylcnfrht.blockchain.domain.services.BlockchainValidationDomainService;
+import com.ylcnfrht.blockchain.domain.services.MiningDomainService;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.domain.transaction.TransactionRepositoryPort;
 import com.ylcnfrht.blockchain.domain.wallet.WalletRepositoryPort;
@@ -30,12 +32,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Transactional
 public class BlockchainApplicationServiceImpl implements BlockchainApplicationService {
-
   private final BlockRepositoryPort blockRepository;
   private final TransactionRepositoryPort transactionRepository;
   private final WalletRepositoryPort walletRepository;
   private final WalletApplicationService walletApplicationService;
   private final BlockchainDtoMapper blockchainDtoMapper;
+  private final MiningDomainService miningDomainService;
+  private final BlockchainValidationDomainService blockchainValidationDomainService;
 
   @Value("${blockchain.mining.difficulty:4}")
   private int miningDifficulty;
@@ -44,9 +47,17 @@ public class BlockchainApplicationServiceImpl implements BlockchainApplicationSe
   private BigDecimal miningReward;
 
   public List<BlockResponseDto> getAllBlocks() {
-    return blockRepository.findAllOrderByIdDesc().stream()
-        .map(blockchainDtoMapper::toBlockResponseDto)
-        .toList();
+    log.info("Getting all blocks from repository");
+    try {
+      List<Block> blocks = blockRepository.findAllOrderByIdDesc();
+      log.info("Found {} blocks", blocks.size());
+      return blocks.stream()
+          .map(blockchainDtoMapper::toBlockResponseDto)
+          .toList(); 
+    } catch (Exception e) {
+      log.error("Error getting blocks", e);
+      throw e;
+    }
   }
 
   public Optional<BlockResponseDto> getBlockById(Long id) {
@@ -66,46 +77,55 @@ public class BlockchainApplicationServiceImpl implements BlockchainApplicationSe
 
   @Transactional
   public CreateBlockResponseDto minePendingTransactions(String minerAddress) {
-    List<Transaction> pendingTransactions = transactionRepository.findPending();
+    log.info("Starting mining process for miner: {}", minerAddress);
+    
+    try {
+      log.info("Fetching pending transactions");
+      List<Transaction> pendingTransactions = transactionRepository.findPending();
+      log.info("Found {} pending transactions", pendingTransactions.size());
 
-    Hash previousHash = blockRepository.findLatest()
-        .map(Block::getHash)
-        .orElse(null);
+      log.info("Fetching latest block for previous hash");
+      Hash previousHash = blockRepository.findLatest()
+          .map(Block::getHash)
+          .orElse(null);
+      log.info("Previous hash: {}", previousHash != null ? previousHash.getValue() : "null");
 
-    Block newBlock = Block.create(previousHash);
+      log.info("Starting mining with difficulty: {} and reward: {}", miningDifficulty, miningReward);
+      // Use domain service for mining
+      Block minedBlock = miningDomainService.mineBlock(
+          pendingTransactions, 
+          previousHash, 
+          miningDifficulty, 
+          miningReward, 
+          minerAddress
+      );
+      log.info("Block mined successfully: {}", minedBlock);
 
-    for (Transaction tx : pendingTransactions) {
-      if (tx.isValid()) newBlock.addTransaction(tx);
+      log.info("Saving mined block to repository");
+      Block savedBlock = blockRepository.save(minedBlock);
+      log.info("Block saved with ID: {}", savedBlock.getId());
+
+      log.info("Marking {} transactions as mined", pendingTransactions.size());
+      // Mark transactions as mined
+      for (Transaction tx : pendingTransactions) {
+        tx.setMined(true);
+        transactionRepository.save(tx);
+      }
+
+      log.info("Updating wallet balances after mining");
+      walletApplicationService.updateWalletBalancesAfterMining();
+
+      log.info("Block mined successfully with {} transactions", pendingTransactions.size());
+      return blockchainDtoMapper.toCreateBlockResponseDto(savedBlock);
+    } catch (Exception e) {
+      log.error("Error during mining process", e);
+      throw e;
     }
-
-    while (!newBlock.meetsDifficulty(miningDifficulty)) {
-      newBlock.incrementNonce();
-    }
-    newBlock.markAsMined(miningDifficulty);
-
-    Block savedBlock = blockRepository.save(newBlock);
-
-    for (Transaction tx : pendingTransactions) {
-      tx.setMined(true);
-      transactionRepository.save(tx);
-    }
-
-    walletApplicationService.updateWalletBalancesAfterMining();
-
-    log.info("Block mined successfully with {} transactions", pendingTransactions.size());
-    return blockchainDtoMapper.toCreateBlockResponseDto(savedBlock);
   }
 
   public boolean isChainValid() {
     List<Block> blocks = blockRepository.findAllOrderByIdDesc();
-    for (int i = 1; i < blocks.size(); i++) {
-      Block currentBlock = blocks.get(i);
-      Block previousBlock = blocks.get(i - 1);
-      if (!currentBlock.isValid()) return false;
-      if (currentBlock.getPreviousHash() == null || previousBlock.getHash() == null) return false;
-      if (!currentBlock.getPreviousHash().equals(previousBlock.getHash())) return false;
-    }
-    return true;
+    return blockchainValidationDomainService.isChainValid(blocks);
   }
 
   public BlockchainStatsResponseDto getBlockchainStats() {

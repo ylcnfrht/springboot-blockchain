@@ -15,7 +15,7 @@ public class WalletDtoMapper {
         .id(wallet.getId().getValue())
         .address(wallet.getAddress().getValue())
         .publicKey(wallet.getPublicKey())
-        .balance(wallet.getBalance().getValue().toString())
+        .balance(wallet.getBalance().getValue())
         .createdAt(wallet.getCreatedAt())
         .active(wallet.isActive())
         .build();
@@ -26,7 +26,7 @@ public class WalletDtoMapper {
         .id(wallet.getId().getValue())
         .address(wallet.getAddress().getValue())
         .publicKey(wallet.getPublicKey())
-        .balance(wallet.getBalance().getValue().toString())
+        .balance(wallet.getBalance().getValue())
         .createdAt(wallet.getCreatedAt())
         .active(wallet.isActive())
         .build();

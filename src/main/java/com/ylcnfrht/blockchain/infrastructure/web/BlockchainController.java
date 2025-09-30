@@ -45,7 +45,13 @@ public class BlockchainController {
   })
   public ResponseEntity<List<BlockResponseDto>> getAllBlocks() {
     log.info("Getting all blocks");
-    return ResponseEntity.ok(blockchainService.getAllBlocks());
+    try {
+      List<BlockResponseDto> blocks = blockchainService.getAllBlocks();
+      return ResponseEntity.ok(blocks);
+    } catch (Exception e) {
+      log.error("Error getting blocks", e);
+      return ResponseEntity.status(500).build();
+    }
   }
 
   @GetMapping("/blocks/{id}")

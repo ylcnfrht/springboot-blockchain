@@ -19,7 +19,7 @@ public class Block extends BaseEntity<Id<Long>> {
   private Timestamp timestamp;
   private Nonce nonce;
   private boolean mined;
-  private final List<Transaction> transactions;
+  private List<Transaction> transactions;
 
   private Block() {
     super();
@@ -43,12 +43,15 @@ public class Block extends BaseEntity<Id<Long>> {
       Nonce nonce,
       boolean mined) {
     Block block = new Block();
-    block.setId(id);
+    if (id != null) {
+      block.setId(id);
+    }
     block.hash = hash;
     block.previousHash = previousHash;
     block.timestamp = timestamp;
     block.nonce = nonce;
     block.mined = mined;
+
     return block;
   }
 
@@ -126,9 +129,13 @@ public class Block extends BaseEntity<Id<Long>> {
     sb.append(nonce.getValue());
 
     for (Transaction tx : transactions) {
-      sb.append(tx.getId() != null ? tx.getId().getValue() : "");
+      // Use transaction data instead of ID for hash calculation
+      sb.append(tx.getFromAddress() != null ? tx.getFromAddress().getValue() : "");
+      sb.append(tx.getToAddress() != null ? tx.getToAddress().getValue() : "");
+      sb.append(tx.getAmount() != null ? tx.getAmount().getValue().toString() : "");
+      sb.append(tx.getTimestamp() != null ? tx.getTimestamp().getValue().toString() : "");
     }
-    
+
     return sb.toString();
   }
 

@@ -15,7 +15,7 @@ public class WalletMapper {
 
   public Wallet toDomain(WalletEntity entity) {
     if (entity == null) return null;
-    return Wallet.of(
+    Wallet wallet = Wallet.of(
         Id.of(entity.getId()),
         Address.of(entity.getAddress()),
         entity.getPublicKey(),
@@ -23,6 +23,10 @@ public class WalletMapper {
         entity.getBalance() != null ? Balance.of(entity.getBalance()) : Balance.of(BigDecimal.ZERO),
         entity.getActive()
     );
+    if (entity.getCreatedAt() != null) {
+      wallet.setCreatedAt(entity.getCreatedAt());
+    }
+    return wallet;
   }
 
   public WalletEntity toEntity(Wallet wallet) {

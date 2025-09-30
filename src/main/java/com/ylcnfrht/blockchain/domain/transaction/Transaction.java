@@ -90,11 +90,10 @@ public class Transaction extends BaseEntity<Id<Long>> {
   }
 
   public boolean isValid() {
-    return fromAddress != null &&
-        toAddress != null &&
+    return toAddress != null &&
         amount != null &&
         !amount.isZero() &&
-        !fromAddress.equals(toAddress);
+        (fromAddress == null || !fromAddress.equals(toAddress));
   }
 
   public boolean isMined() {

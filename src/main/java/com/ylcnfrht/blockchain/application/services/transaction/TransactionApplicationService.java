@@ -14,6 +14,7 @@ import com.ylcnfrht.blockchain.application.ports.TransactionService;
 import com.ylcnfrht.blockchain.application.services.wallet.WalletApplicationService;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
+import com.ylcnfrht.blockchain.domain.services.TransactionValidationDomainService;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.domain.transaction.TransactionRepositoryPort;
 import com.ylcnfrht.blockchain.domain.transaction.valueobjects.Amount;
@@ -32,6 +33,7 @@ public class TransactionApplicationService implements TransactionService {
   private final TransactionRepositoryPort transactionRepository;
   private final WalletApplicationService walletApplicationService;
   private final TransactionDtoMapper transactionDtoMapper;
+  private final TransactionValidationDomainService transactionValidationDomainService;
 
   public List<TransactionResponseDto> getAllTransactions() {
     return transactionRepository.findAll().stream()
@@ -62,16 +64,22 @@ public class TransactionApplicationService implements TransactionService {
   }
 
   public CreateTransactionResponseDto createTransaction(CreateTransactionRequestDto request) {
-    if (request.getFromAddress() != null &&
-        !walletApplicationService.hasEnoughBalance(request.getFromAddress(), request.getAmount())) {
-      throw new IllegalArgumentException("Insufficient balance");
+    Address fromAddress = request.getFromAddress() != null ? Address.of(request.getFromAddress()) : null;
+    Address toAddress = Address.of(request.getToAddress());
+    Amount amount = Amount.of(request.getAmount());
+
+    // Get current balance for validation if fromAddress is provided
+    com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance currentBalance = null;
+    if (fromAddress != null) {
+      // Get balance using wallet service
+      var balanceResponse = walletApplicationService.getWalletBalance(fromAddress.getValue());
+      currentBalance = com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance.of(balanceResponse.getBalance());
     }
 
-    Transaction transaction = Transaction.create(
-        request.getFromAddress() != null ? Address.of(request.getFromAddress()) : null,
-        Address.of(request.getToAddress()),
-        Amount.of(request.getAmount())
-    );
+    // Validate transaction creation using domain service
+    transactionValidationDomainService.validateTransactionCreation(fromAddress, toAddress, amount, currentBalance);
+
+    Transaction transaction = Transaction.create(fromAddress, toAddress, amount);
     if (request.getSignature() != null) {
       transaction.setSignature(Signature.of(request.getSignature()));
     }
@@ -85,6 +93,9 @@ public class TransactionApplicationService implements TransactionService {
     return transactionRepository.findById(Id.of(id))
         .filter(tx -> !tx.isMined())
         .map(existingTransaction -> {
+          // Validate transaction update using domain service
+          transactionValidationDomainService.validateTransactionUpdate(existingTransaction);
+          
           if (request.getSignature() != null) {
             existingTransaction.setSignature(Signature.of(request.getSignature()));
           }
@@ -98,6 +109,9 @@ public class TransactionApplicationService implements TransactionService {
     return transactionRepository.findById(Id.of(id))
         .filter(tx -> !tx.isMined())
         .map(transaction -> {
+          // Validate transaction deletion using domain service
+          transactionValidationDomainService.validateTransactionDeletion(transaction);
+          
           transactionRepository.delete(transaction);
           log.info("Deleted transaction with id: {}", id);
           return true;

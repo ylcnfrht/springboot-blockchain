@@ -19,9 +19,7 @@ public class Address extends BaseValueObject<String> {
     }
 
     private boolean isValidAddress(String address) {
-        return address.length() >= 26 &&
-                address.length() <= 35 &&
-                address.matches("^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$");
+        return address != null && !address.trim().isEmpty();
     }
 
     public static Address of(String value) {

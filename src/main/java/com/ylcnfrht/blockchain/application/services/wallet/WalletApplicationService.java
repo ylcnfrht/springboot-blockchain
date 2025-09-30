@@ -14,6 +14,8 @@ import com.ylcnfrht.blockchain.application.dtos.response.WalletResponseDto;
 import com.ylcnfrht.blockchain.application.mappers.WalletDtoMapper;
 import com.ylcnfrht.blockchain.application.ports.WalletService;
 import com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance;
+import com.ylcnfrht.blockchain.domain.services.WalletBalanceDomainService;
+import com.ylcnfrht.blockchain.domain.services.WalletSecurityDomainService;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.domain.transaction.TransactionRepositoryPort;
 import com.ylcnfrht.blockchain.domain.wallet.Wallet;
@@ -32,11 +34,21 @@ public class WalletApplicationService implements WalletService {
   private final WalletRepositoryPort walletRepository;
   private final TransactionRepositoryPort transactionRepository;
   private final WalletDtoMapper walletDtoMapper;
+  private final WalletBalanceDomainService walletBalanceDomainService;
+  private final WalletSecurityDomainService walletSecurityDomainService;
 
   public List<WalletResponseDto> getAllWallets() {
-    return walletRepository.findByActiveTrue().stream()
-        .map(walletDtoMapper::toWalletResponseDto)
-        .toList();
+    log.info("Getting all wallets from repository");
+    try {
+      List<Wallet> wallets = walletRepository.findByActiveTrue();
+      log.info("Found {} wallets", wallets.size());
+      return wallets.stream()
+          .map(walletDtoMapper::toWalletResponseDto)
+          .toList();
+    } catch (Exception e) {
+      log.error("Error getting wallets", e);
+      throw e;
+    }
   }
 
   public Optional<WalletResponseDto> getWalletById(Long id) {
@@ -50,12 +62,21 @@ public class WalletApplicationService implements WalletService {
   }
 
   public CreateWalletResponseDto createWallet(CreateWalletRequestDto request) {
-    if (walletRepository.existsByAddress(request.getAddress())) {
-      throw new IllegalArgumentException("Wallet with this address already exists");
-    }
+    Address address = Address.of(request.getAddress());
+    
+    // Validate address uniqueness using domain service
+    walletSecurityDomainService.validateAddressUniqueness(address, 
+        addr -> walletRepository.existsByAddress(addr.getValue()));
+    
+    // Validate wallet creation parameters using domain service
+    walletSecurityDomainService.validateWalletCreation(
+        address, 
+        request.getPublicKey(), 
+        request.getPrivateKey()
+    );
 
     Wallet wallet = Wallet.create(
-        Address.of(request.getAddress()),
+        address,
         request.getPublicKey(),
         request.getPrivateKey()
     );
@@ -69,6 +90,11 @@ public class WalletApplicationService implements WalletService {
     return walletRepository.findById(id)
         .map(existingWallet -> {
           if (request.getPrivateKey() != null) {
+            // Validate key rotation using domain service
+            walletSecurityDomainService.validateKeyRotation(
+                request.getPrivateKey(), 
+                existingWallet.getPublicKey()
+            );
             existingWallet.rotateKeys(existingWallet.getPublicKey(), request.getPrivateKey());
           }
 
@@ -100,65 +126,40 @@ public class WalletApplicationService implements WalletService {
   }
 
   public WalletBalanceResponseDto getWalletBalance(String address) {
-    BigDecimal confirmedBalance = calculateConfirmedBalance(address);
-    BigDecimal pendingBalance = calculatePendingBalance(address);
+    try {
+      log.info("Getting wallet balance for address: {}", address);
+      Address walletAddress = Address.of(address);
+      log.info("Created wallet address: {}", walletAddress.getValue());
+      
+      List<Transaction> transactions = transactionRepository.findByAddress(walletAddress);
+      log.info("Found {} transactions for address", transactions.size());
+      
+      List<Transaction> pendingTransactions = transactionRepository.findPending()
+          .stream()
+          .filter(tx -> (tx.getFromAddress() != null && address.equals(tx.getFromAddress().getValue()))
+              || (tx.getToAddress() != null && address.equals(tx.getToAddress().getValue())))
+          .toList();
+      log.info("Found {} pending transactions for address", pendingTransactions.size());
 
-    return walletDtoMapper.toWalletBalanceResponseDto(address, confirmedBalance, pendingBalance);
-  }
+      // Use domain service for balance calculations
+      Balance confirmedBalance = walletBalanceDomainService.calculateConfirmedBalance(walletAddress, transactions);
+      log.info("Calculated confirmed balance: {}", confirmedBalance.getValue());
+      
+      Balance pendingBalance = walletBalanceDomainService.calculatePendingBalance(walletAddress, pendingTransactions);
+      log.info("Calculated pending balance: {}", pendingBalance.getValue());
 
-  private BigDecimal calculateConfirmedBalance(String address) {
-    List<Transaction> transactions = transactionRepository
-        .findByAddress(Address.of(address));
-    List<Transaction> minedTransactions = transactions.stream()
-        .filter(Transaction::isMined)
-        .toList();
-
-    log.info("Found {} mined transactions for address {}", minedTransactions.size(), address);
-
-    BigDecimal balance = BigDecimal.ZERO;
-
-    for (Transaction transaction : minedTransactions) {
-      log.info("Processing transaction: from={}, to={}, amount={}",
-          transaction.getFromAddress(), transaction.getToAddress(), transaction.getAmount());
-
-      if (transaction.getFromAddress() != null && address.equals(transaction.getFromAddress().getValue())) {
-        balance = balance.subtract(transaction.getAmount().getValue());
-        log.info("Subtracted {} from balance, new balance: {}", transaction.getAmount(), balance);
-      }
-      if (address.equals(transaction.getToAddress().getValue())) {
-        balance = balance.add(transaction.getAmount().getValue());
-        log.info("Added {} to balance, new balance: {}", transaction.getAmount(), balance);
-      }
+      return walletDtoMapper.toWalletBalanceResponseDto(address, confirmedBalance.getValue(), pendingBalance.getValue());
+    } catch (Exception e) {
+      log.error("Error getting wallet balance for address: {}", address, e);
+      throw e;
     }
-
-    log.info("Final confirmed balance for {}: {}", address, balance);
-    return balance;
   }
 
-  private BigDecimal calculatePendingBalance(String address) {
-    List<Transaction> pendingTransactions = transactionRepository.findPending()
-        .stream()
-        .filter(tx -> (tx.getFromAddress() != null && address.equals(tx.getFromAddress().getValue()))
-            || address.equals(tx.getToAddress().getValue()))
-        .toList();
-
-    BigDecimal pendingBalance = BigDecimal.ZERO;
-
-    for (Transaction transaction : pendingTransactions) {
-      if (transaction.getFromAddress() != null && address.equals(transaction.getFromAddress().getValue())) {
-        pendingBalance = pendingBalance.subtract(transaction.getAmount().getValue());
-      }
-      if (address.equals(transaction.getToAddress().getValue())) {
-        pendingBalance = pendingBalance.add(transaction.getAmount().getValue());
-      }
-    }
-
-    return pendingBalance;
-  }
 
   public boolean hasEnoughBalance(String address, BigDecimal amount) {
-    BigDecimal currentBalance = calculateConfirmedBalance(address);
-    return currentBalance.compareTo(amount) >= 0;
+    Address walletAddress = Address.of(address);
+    List<Transaction> transactions = transactionRepository.findByAddress(walletAddress);
+    return walletBalanceDomainService.hasEnoughBalance(walletAddress, amount, transactions);
   }
 
   public List<Transaction> getWalletTransactionHistory(String address) {
@@ -167,12 +168,15 @@ public class WalletApplicationService implements WalletService {
 
   public void updateWalletBalancesAfterMining() {
     List<Wallet> wallets = walletRepository.findByActiveTrue();
+    List<Transaction> allTransactions = transactionRepository.findAll();
 
+    // Use domain service for balance updates
+    walletBalanceDomainService.updateWalletBalancesAfterMining(wallets, allTransactions);
+    
+    // Save updated wallets
     for (Wallet wallet : wallets) {
-      BigDecimal currentBalance = calculateConfirmedBalance(wallet.getAddress().getValue());
-      wallet.setBalance(Balance.of(currentBalance));
       walletRepository.save(wallet);
-      log.info("Updated wallet balance for {}: {}", wallet.getAddress().getValue(), currentBalance);
+      log.info("Updated wallet balance for {}: {}", wallet.getAddress().getValue(), wallet.getBalance().getValue());
     }
   }
 

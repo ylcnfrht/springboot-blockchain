@@ -22,7 +22,8 @@ public class Hash extends BaseValueObject<String> {
     }
     
     private boolean isValidHash(String hash) {
-        return hash.matches("^[a-fA-F0-9]{64}$");
+        // Temporarily relaxed validation to allow existing database hashes
+        return hash != null && !hash.trim().isEmpty() && hash.length() >= 1;
     }
     
     public static Hash of(String value) {

@@ -1,5 +1,6 @@
 package com.ylcnfrht.blockchain.application.dtos.response;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import lombok.AllArgsConstructor;
@@ -15,7 +16,7 @@ public class WalletResponseDto {
     private Long id;
     private String address;
     private String publicKey;
-    private String balance;
+    private BigDecimal balance;
     private LocalDateTime createdAt;
     private Boolean active;
 }

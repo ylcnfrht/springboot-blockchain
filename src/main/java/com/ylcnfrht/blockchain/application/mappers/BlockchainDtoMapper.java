@@ -14,11 +14,11 @@ public class BlockchainDtoMapper {
 
   public CreateBlockResponseDto toCreateBlockResponseDto(Block block) {
     return CreateBlockResponseDto.builder()
-        .id(block.getId().getValue())
-        .hash(block.getHash().getValue())
+        .id(block.getId() != null ? block.getId().getValue() : null)
+        .hash(block.getHash() != null ? block.getHash().getValue() : null)
         .previousHash(block.getPreviousHash() != null ? block.getPreviousHash().getValue() : null)
-        .nonce(block.getNonce().getValue())
-        .timestamp(block.getTimestamp().getValue())
+        .nonce(block.getNonce() != null ? block.getNonce().getValue() : null)
+        .timestamp(block.getTimestamp() != null ? block.getTimestamp().getValue() : null)
         .mined(block.isMined())
         .transactions(block.getTransactions().stream()
             .map(this::toTransactionResponseDto)
@@ -28,11 +28,11 @@ public class BlockchainDtoMapper {
 
   public BlockResponseDto toBlockResponseDto(Block block) {
     return BlockResponseDto.builder()
-        .id(block.getId().getValue())
-        .hash(block.getHash().getValue())
+        .id(block.getId() != null ? block.getId().getValue() : null)
+        .hash(block.getHash() != null ? block.getHash().getValue() : null)
         .previousHash(block.getPreviousHash() != null ? block.getPreviousHash().getValue() : null)
-        .nonce(block.getNonce().getValue())
-        .timestamp(block.getTimestamp().getValue())
+        .nonce(block.getNonce() != null ? block.getNonce().getValue() : null)
+        .timestamp(block.getTimestamp() != null ? block.getTimestamp().getValue() : null)
         .mined(block.isMined())
         .transactions(block.getTransactions().stream()
             .map(this::toTransactionResponseDto)
@@ -42,12 +42,12 @@ public class BlockchainDtoMapper {
 
   public TransactionResponseDto toTransactionResponseDto(Transaction transaction) {
     return TransactionResponseDto.builder()
-        .id(transaction.getId().getValue())
+        .id(transaction.getId() != null ? transaction.getId().getValue() : null)
         .fromAddress(transaction.getFromAddress() != null ? transaction.getFromAddress().getValue() : null)
-        .toAddress(transaction.getToAddress().getValue())
-        .amount(transaction.getAmount().getValue())
+        .toAddress(transaction.getToAddress() != null ? transaction.getToAddress().getValue() : null)
+        .amount(transaction.getAmount() != null ? transaction.getAmount().getValue() : null)
         .signature(transaction.getSignature() != null ? transaction.getSignature().getValue() : null)
-        .timestamp(transaction.getTimestamp().getValue())
+        .timestamp(transaction.getTimestamp() != null ? transaction.getTimestamp().getValue() : null)
         .mined(transaction.isMined())
         .build();
   }

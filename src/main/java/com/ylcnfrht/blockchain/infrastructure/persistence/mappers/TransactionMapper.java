@@ -20,7 +20,7 @@ public class TransactionMapper {
     return Transaction.of(
         Id.of(entity.getId()),
         entity.getFromAddress() != null ? Address.of(entity.getFromAddress()) : null,
-        Address.of(entity.getToAddress()),
+        entity.getToAddress() != null ? Address.of(entity.getToAddress()) : null,
         Amount.of(entity.getAmount()),
         entity.getSignature() != null ? Signature.of(entity.getSignature()) : null,
         entity.getTimestamp() != null ? Timestamp.of(entity.getTimestamp()) : Timestamp.now(),
