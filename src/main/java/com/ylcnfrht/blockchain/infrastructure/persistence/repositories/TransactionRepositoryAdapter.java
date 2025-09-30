@@ -24,11 +24,33 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
     this.mapper = mapper;
   }
 
+  // ReadRepository methods
   @Override
   public Optional<Transaction> findById(Id<Long> id) {
     return jpaRepository.findById(id.getValue()).map(mapper::toDomain);
   }
 
+  @Override
+  public List<Transaction> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
+
+  @Override
+  public boolean existsById(Id<Long> id) {
+    return jpaRepository.existsById(id.getValue());
+  }
+
+  @Override
+  public long count() {
+    return jpaRepository.count();
+  }
+
+  @Override
+  public List<Transaction> findByActiveTrue() {
+    return jpaRepository.findByActiveTrue().stream().map(mapper::toDomain).toList();
+  }
+
+  // Transaction-specific read methods
   @Override
   public Optional<Transaction> findByHash(Hash hash) {
     return jpaRepository.findByTransactionHash(hash.getValue()).map(mapper::toDomain);
@@ -44,24 +66,43 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
     return jpaRepository.findByBlockIsNull().stream().map(mapper::toDomain).toList();
   }
 
+  // WriteRepository methods
   @Override
   public Transaction save(Transaction transaction) {
     return mapper.toDomain(jpaRepository.save(mapper.toEntity(transaction)));
   }
 
   @Override
-  public List<Transaction> findAll() {
-    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  public List<Transaction> saveAll(List<Transaction> transactions) {
+    var entities = transactions.stream().map(mapper::toEntity).toList();
+    var savedEntities = jpaRepository.saveAll(entities);
+    return savedEntities.stream().map(mapper::toDomain).toList();
   }
 
   @Override
-  public long count() {
-    return jpaRepository.count();
+  public void deleteById(Id<Long> id) {
+    jpaRepository.deleteById(id.getValue());
   }
 
   @Override
   public void delete(Transaction transaction) {
     jpaRepository.delete(mapper.toEntity(transaction));
+  }
+
+  @Override
+  public void deleteAll(List<Transaction> transactions) {
+    var entities = transactions.stream().map(mapper::toEntity).toList();
+    jpaRepository.deleteAll(entities);
+  }
+
+  @Override
+  public Transaction saveAndFlush(Transaction transaction) {
+    return mapper.toDomain(jpaRepository.saveAndFlush(mapper.toEntity(transaction)));
+  }
+
+  @Override
+  public void flush() {
+    jpaRepository.flush();
   }
 }
 

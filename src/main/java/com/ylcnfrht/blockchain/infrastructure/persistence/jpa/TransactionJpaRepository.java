@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 import com.ylcnfrht.blockchain.infrastructure.persistence.entities.TransactionEntity;
 
 public interface TransactionJpaRepository extends JpaRepository<TransactionEntity, Long> {
+  
+  // Read methods
   Optional<TransactionEntity> findByTransactionHash(String transactionHash);
 
   List<TransactionEntity> findByFromAddress(String fromAddress);
@@ -25,6 +27,15 @@ public interface TransactionJpaRepository extends JpaRepository<TransactionEntit
   List<TransactionEntity> findMinedTransactions();
 
   List<TransactionEntity> findByMinedTrue();
+  
+  List<TransactionEntity> findByActiveTrue();
+  
+  // Custom queries
+  @Query("SELECT t FROM TransactionEntity t WHERE t.mined = false ORDER BY t.createdAt ASC")
+  List<TransactionEntity> findPendingTransactions();
+  
+  @Query("SELECT COUNT(t) FROM TransactionEntity t WHERE t.mined = false")
+  long countPendingTransactions();
 }
 
 

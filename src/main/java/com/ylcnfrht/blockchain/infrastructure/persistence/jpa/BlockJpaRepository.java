@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import com.ylcnfrht.blockchain.infrastructure.persistence.entities.BlockEntity;
 
 public interface BlockJpaRepository extends JpaRepository<BlockEntity, Long> {
+  
+  // Read methods
   Optional<BlockEntity> findByHash(String hash);
 
   @Query("SELECT b FROM BlockEntity b ORDER BY b.id DESC")
@@ -20,6 +22,15 @@ public interface BlockJpaRepository extends JpaRepository<BlockEntity, Long> {
   List<BlockEntity> findByMinedTrue();
 
   List<BlockEntity> findByMinedFalse();
+  
+  List<BlockEntity> findByActiveTrue();
+  
+  // Custom queries
+  @Query("SELECT b FROM BlockEntity b WHERE b.mined = true ORDER BY b.createdAt DESC")
+  List<BlockEntity> findMinedBlocksOrderByCreatedAt();
+  
+  @Query("SELECT COUNT(b) FROM BlockEntity b WHERE b.mined = true")
+  long countMinedBlocks();
 }
 
 

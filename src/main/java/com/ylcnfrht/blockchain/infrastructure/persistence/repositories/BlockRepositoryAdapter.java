@@ -23,16 +23,33 @@ public class BlockRepositoryAdapter implements BlockRepositoryPort {
     this.mapper = mapper;
   }
 
-  @Override
-  public List<Block> findAllOrderByIdDesc() {
-    return jpaRepository.findAllOrderByIdDesc().stream().map(mapper::toDomain).toList();
-  }
-
+  // ReadRepository methods
   @Override
   public Optional<Block> findById(Id<Long> id) {
     return jpaRepository.findById(id.getValue()).map(mapper::toDomain);
   }
 
+  @Override
+  public List<Block> findAll() {
+    return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+  }
+
+  @Override
+  public boolean existsById(Id<Long> id) {
+    return jpaRepository.existsById(id.getValue());
+  }
+
+  @Override
+  public long count() {
+    return jpaRepository.count();
+  }
+
+  @Override
+  public List<Block> findByActiveTrue() {
+    return jpaRepository.findByActiveTrue().stream().map(mapper::toDomain).toList();
+  }
+
+  // Block-specific read methods
   @Override
   public Optional<Block> findByHash(Hash hash) {
     return jpaRepository.findByHash(hash.getValue()).map(mapper::toDomain);
@@ -44,18 +61,52 @@ public class BlockRepositoryAdapter implements BlockRepositoryPort {
   }
 
   @Override
+  public List<Block> findAllOrderByIdDesc() {
+    return jpaRepository.findAllOrderByIdDesc().stream().map(mapper::toDomain).toList();
+  }
+
+  @Override
   public List<Block> findByMined(boolean mined) {
     return (mined ? jpaRepository.findByMinedTrue() : jpaRepository.findByMinedFalse()).stream().map(mapper::toDomain).toList();
   }
 
+  // WriteRepository methods
   @Override
   public Block save(Block block) {
     return mapper.toDomain(jpaRepository.save(mapper.toEntity(block)));
   }
 
   @Override
-  public long count() {
-    return jpaRepository.count();
+  public List<Block> saveAll(List<Block> blocks) {
+    var entities = blocks.stream().map(mapper::toEntity).toList();
+    var savedEntities = jpaRepository.saveAll(entities);
+    return savedEntities.stream().map(mapper::toDomain).toList();
+  }
+
+  @Override
+  public void deleteById(Id<Long> id) {
+    jpaRepository.deleteById(id.getValue());
+  }
+
+  @Override
+  public void delete(Block block) {
+    jpaRepository.delete(mapper.toEntity(block));
+  }
+
+  @Override
+  public void deleteAll(List<Block> blocks) {
+    var entities = blocks.stream().map(mapper::toEntity).toList();
+    jpaRepository.deleteAll(entities);
+  }
+
+  @Override
+  public Block saveAndFlush(Block block) {
+    return mapper.toDomain(jpaRepository.saveAndFlush(mapper.toEntity(block)));
+  }
+
+  @Override
+  public void flush() {
+    jpaRepository.flush();
   }
 }
 
