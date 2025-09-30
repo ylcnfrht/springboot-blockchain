@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ylcnfrht.blockchain.application.dtos.request.CreateWalletRequestDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateWalletResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.KeyPairResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletBalanceResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletResponseDto;
 import com.ylcnfrht.blockchain.application.exceptions.WalletApplicationException;
@@ -16,13 +17,14 @@ import com.ylcnfrht.blockchain.application.mappers.WalletDtoMapper;
 import com.ylcnfrht.blockchain.application.ports.WalletService;
 import com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
-import com.ylcnfrht.blockchain.domain.services.WalletBalanceDomainService;
-import com.ylcnfrht.blockchain.domain.services.WalletSecurityDomainService;
+import com.ylcnfrht.blockchain.domain.domainservices.WalletBalanceDomainService;
+import com.ylcnfrht.blockchain.domain.domainservices.WalletSecurityDomainService;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.domain.transaction.TransactionRepositoryPort;
 import com.ylcnfrht.blockchain.domain.wallet.Wallet;
 import com.ylcnfrht.blockchain.domain.wallet.WalletRepositoryPort;
 import com.ylcnfrht.blockchain.domain.wallet.valueobjects.Address;
+import com.ylcnfrht.blockchain.infrastructure.crypto.KeyPairGenerator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,7 @@ public class WalletApplicationService implements WalletService {
   private final WalletDtoMapper walletDtoMapper;
   private final WalletBalanceDomainService walletBalanceDomainService;
   private final WalletSecurityDomainService walletSecurityDomainService;
+  private final KeyPairGenerator keyPairGenerator;
 
   public List<WalletResponseDto> getAllWallets() {
     log.info("Getting all wallets from repository");
@@ -262,6 +265,23 @@ public class WalletApplicationService implements WalletService {
     } catch (Exception e) {
       log.error("Error updating wallet balances after mining", e);
       throw WalletApplicationException.balanceUpdateFailed(e.getMessage());
+    }
+  }
+
+  @Override
+  public KeyPairResponseDto generateKeyPair() {
+    log.info("Generating new ECDSA key pair");
+    try {
+      KeyPairGenerator.KeyPairStrings keyPairStrings = keyPairGenerator.generateKeyPairStrings();
+      
+      log.info("Successfully generated ECDSA key pair");
+      return walletDtoMapper.toKeyPairResponseDto(
+          keyPairStrings,
+          "ECDSA_SHA256"
+      );
+    } catch (Exception e) {
+      log.error("Error generating key pair", e);
+      throw WalletApplicationException.keyPairGenerationFailed(e.getMessage());
     }
   }
 

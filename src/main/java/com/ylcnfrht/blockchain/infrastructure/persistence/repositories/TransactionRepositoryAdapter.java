@@ -5,12 +5,14 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
+import com.ylcnfrht.blockchain.domain.blockchain.Block;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.domain.transaction.TransactionRepositoryPort;
 import com.ylcnfrht.blockchain.domain.wallet.valueobjects.Address;
 import com.ylcnfrht.blockchain.infrastructure.persistence.jpa.TransactionJpaRepository;
+import com.ylcnfrht.blockchain.infrastructure.persistence.mappers.BlockMapper;
 import com.ylcnfrht.blockchain.infrastructure.persistence.mappers.TransactionMapper;
 
 @Repository
@@ -18,10 +20,12 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
 
   private final TransactionJpaRepository jpaRepository;
   private final TransactionMapper mapper;
+  private final BlockMapper blockMapper;
 
-  public TransactionRepositoryAdapter(TransactionJpaRepository jpaRepository, TransactionMapper mapper) {
+  public TransactionRepositoryAdapter(TransactionJpaRepository jpaRepository, TransactionMapper mapper, BlockMapper blockMapper) {
     this.jpaRepository = jpaRepository;
     this.mapper = mapper;
+    this.blockMapper = blockMapper;
   }
 
   @Override
@@ -63,6 +67,14 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
   @Override
   public Transaction save(Transaction transaction) {
     return mapper.toDomain(jpaRepository.save(mapper.toEntity(transaction)));
+  }
+
+  @Override
+  public Transaction saveWithBlock(Transaction transaction, Block block) {
+    var entity = mapper.toEntity(transaction);
+    var blockEntity = blockMapper.toEntity(block);
+    entity.setBlock(blockEntity);
+    return mapper.toDomain(jpaRepository.save(entity));
   }
 
   @Override

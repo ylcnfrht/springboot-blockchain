@@ -108,4 +108,20 @@ public class TransactionApplicationException extends ApplicationException {
             "Failed to retrieve pending transactions"
         );
     }
+    
+    public static TransactionApplicationException transactionAlreadySigned(Long id) {
+        return new TransactionApplicationException(
+            ErrorCode.TRANSACTION_ALREADY_SIGNED,
+            "Transaction with id " + id + " is already signed",
+            "Transaction is already signed"
+        );
+    }
+    
+    public static TransactionApplicationException transactionSigningFailed(Long id, String reason) {
+        return new TransactionApplicationException(
+            ErrorCode.TRANSACTION_SIGNING_FAILED,
+            "Failed to sign transaction with id " + id + ": " + reason,
+            "Failed to sign transaction"
+        );
+    }
 }

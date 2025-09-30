@@ -1,4 +1,4 @@
-package com.ylcnfrht.blockchain.domain.services;
+package com.ylcnfrht.blockchain.domain.domainservices;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -68,9 +68,6 @@ public class WalletBalanceDomainService {
             }
         }
 
-        if (pendingBalance.compareTo(BigDecimal.ZERO) < 0) {
-            return Balance.of(BigDecimal.ZERO);
-        }
         return Balance.of(pendingBalance);
     }
 
@@ -99,6 +96,7 @@ public class WalletBalanceDomainService {
 
     /**
      * Checks if a wallet has sufficient balance for a transaction.
+     * Considers both confirmed and pending transactions.
      * 
      * @param address the wallet address to check
      * @param amount the amount to check against
@@ -106,7 +104,23 @@ public class WalletBalanceDomainService {
      * @return true if the wallet has sufficient balance
      */
     public boolean hasEnoughBalance(Address address, BigDecimal amount, List<Transaction> transactions) {
-        Balance currentBalance = calculateConfirmedBalance(address, transactions);
-        return currentBalance.getValue().compareTo(amount) >= 0;
+        // Calculate confirmed balance
+        Balance confirmedBalance = calculateConfirmedBalance(address, transactions);
+        
+        // Calculate pending balance (outgoing transactions that reduce available balance)
+        List<Transaction> pendingOutgoing = transactions.stream()
+            .filter(tx -> !tx.isMined() && 
+                         tx.getFromAddress() != null && 
+                         address.equals(tx.getFromAddress()))
+            .toList();
+        
+        BigDecimal pendingOutgoingAmount = pendingOutgoing.stream()
+            .map(tx -> tx.getAmount().getValue())
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // Available balance = confirmed balance - pending outgoing transactions
+        BigDecimal availableBalance = confirmedBalance.getValue().subtract(pendingOutgoingAmount);
+        
+        return availableBalance.compareTo(amount) >= 0;
     }
 }

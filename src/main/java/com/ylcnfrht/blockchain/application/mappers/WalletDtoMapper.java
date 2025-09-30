@@ -3,6 +3,8 @@ package com.ylcnfrht.blockchain.application.mappers;
 import org.springframework.stereotype.Component;
 
 import com.ylcnfrht.blockchain.application.dtos.response.CreateWalletResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.KeyPairResponseDto;
+import com.ylcnfrht.blockchain.infrastructure.crypto.KeyPairGenerator.KeyPairStrings;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletBalanceResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletResponseDto;
 import com.ylcnfrht.blockchain.domain.wallet.Wallet;
@@ -40,6 +42,14 @@ public class WalletDtoMapper {
         .address(address)
         .balance(balance)
         .pendingBalance(pendingBalance)
+        .build();
+  }
+
+  public KeyPairResponseDto toKeyPairResponseDto(KeyPairStrings keyPair, String algorithm) {
+    return KeyPairResponseDto.builder()
+        .publicKey(keyPair.getPublicKey())
+        .privateKey(keyPair.getPrivateKey())
+        .algorithm(algorithm)
         .build();
   }
 }

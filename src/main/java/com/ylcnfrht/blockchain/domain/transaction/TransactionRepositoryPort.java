@@ -3,6 +3,7 @@ package com.ylcnfrht.blockchain.domain.transaction;
 import java.util.List;
 import java.util.Optional;
 
+import com.ylcnfrht.blockchain.domain.blockchain.Block;
 import com.ylcnfrht.blockchain.domain.common.repositories.ReadRepository;
 import com.ylcnfrht.blockchain.domain.common.repositories.WriteRepository;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
@@ -14,6 +15,7 @@ public interface TransactionRepositoryPort extends ReadRepository<Transaction, I
   Optional<Transaction> findByHash(Hash hash);
   List<Transaction> findByAddress(Address address);
   List<Transaction> findPending();
+  Transaction saveWithBlock(Transaction transaction, Block block);
 }
 
 

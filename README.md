@@ -107,13 +107,13 @@ This project implements a **Clean Architecture** with **Domain-Driven Design (DD
 
 ## 🚧 Roadmap / Todo
 
-1. **Full CQRS implementation** (separating command & query handlers)  
-2. **Unit tests** (especially for domain and application layers)  
-3. **Integration tests** (repository and controller layers)  
-5. **Event Sourcing / Domain Events** (event-driven approach for transaction and block lifecycle)  
-6. **Security enhancements** (JWT authentication, rate limiting, CORS configuration, etc.)  
-7. **Caching strategies** (e.g., blockchain validation, wallet balance queries)  
-8. **Message Queue integration** (Kafka / RabbitMQ for transaction publish & subscribe)
+1. **Full CQRS implementation** (separating command & query handlers)
+2. **Unit tests** (especially for domain and application layers)
+3. **Integration tests** (repository and controller layers)
+4. **Event Sourcing / Domain Events** (event-driven approach for transaction and block lifecycle)
+5. **Security enhancements** (JWT authentication, rate limiting, CORS configuration, etc.)
+6. **Caching strategies** (e.g., blockchain validation, wallet balance queries)
+7. **Message Queue integration** (Kafka / RabbitMQ for transaction publish & subscribe)
 
 ## 📁 Project Structure
 
@@ -250,6 +250,7 @@ blockchain:
 - `GET /api/wallets/address/{address}` - Get wallet by address
 - `GET /api/wallets/address/{address}/balance` - Get wallet balance
 - `POST /api/wallets` - Create new wallet
+- `POST /api/wallets/generate-keypair` - Generate a new ECDSA key pair (Base64)
 - `PUT /api/wallets/{id}` - Update wallet
 - `DELETE /api/wallets/{id}` - Delete wallet
 - `PATCH /api/wallets/{id}/deactivate` - Deactivate wallet
@@ -262,8 +263,23 @@ blockchain:
 - `GET /api/transactions/address/{address}` - Get transactions by address
 - `GET /api/transactions/pending` - Get pending transactions
 - `POST /api/transactions` - Create new transaction
+- `POST /api/transactions/sign` - Sign a pending transaction with a private key
 - `PUT /api/transactions/{id}` - Update transaction
 - `DELETE /api/transactions/{id}` - Delete transaction
+
+### Typical Scenarios
+
+- New user funding and first transfer
+
+  1. Generate a key pair → create a wallet (e.g., address=alice)
+  2. Mine with minerAddress=alice to receive the reward
+  3. GET balance(alice) → confirmed > 0
+  4. POST transaction (from=alice, to=bob, amount=10)
+  5. (Optional) POST transactions/sign to sign the transaction
+  6. Mine with minerAddress=alice → the transaction is confirmed and balances are updated
+
+- Collecting rewards only
+  - Repeatedly mine with your wallet as minerAddress to accumulate coinbase rewards (no transfers required)
 
 ### Response Format
 
@@ -346,7 +362,6 @@ COPY target/blockchain-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app.jar"]
 ```
-
 
 ## 🤝 Contributing
 

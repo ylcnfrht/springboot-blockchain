@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import com.ylcnfrht.blockchain.application.dtos.request.CreateWalletRequestDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateWalletResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.KeyPairResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletBalanceResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletResponseDto;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
@@ -23,5 +24,6 @@ public interface WalletService {
   public boolean hasEnoughBalance(String address, BigDecimal amount);
   public List<Transaction> getWalletTransactionHistory(String address);
   public void updateWalletBalancesAfterMining();
+  public KeyPairResponseDto generateKeyPair();
 
 }

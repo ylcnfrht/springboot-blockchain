@@ -1,4 +1,4 @@
-package com.ylcnfrht.blockchain.domain.services;
+package com.ylcnfrht.blockchain.domain.domainservices;
 
 import org.springframework.stereotype.Service;
 
@@ -139,11 +139,7 @@ public class WalletSecurityDomainService {
 
         String addressValue = address.getValue().trim();
         
-        return !addressValue.isEmpty() && 
-               addressValue.length() >= 3 && 
-               addressValue.length() <= 100 &&
-               !addressValue.contains(" ") &&
-               addressValue.matches("^[a-zA-Z0-9]+$");
+        return !addressValue.isEmpty();
     }
 
     /**
@@ -161,8 +157,7 @@ public class WalletSecurityDomainService {
         
         return trimmedKey.length() >= 3 && 
                trimmedKey.length() <= 2048 &&
-               !trimmedKey.contains(" ") &&
-               trimmedKey.matches("^[a-zA-Z0-9]+$");
+               !trimmedKey.contains(" ");
     }
 
     /**

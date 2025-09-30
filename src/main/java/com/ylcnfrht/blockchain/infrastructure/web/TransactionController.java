@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ylcnfrht.blockchain.application.dtos.request.CreateTransactionRequestDto;
+import com.ylcnfrht.blockchain.application.dtos.request.SignTransactionRequestDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateTransactionResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.SignTransactionResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.TransactionResponseDto;
 import com.ylcnfrht.blockchain.application.ports.TransactionService;
 import com.ylcnfrht.blockchain.infrastructure.web.result.ApiErrorCode;
@@ -200,6 +202,26 @@ public class TransactionController {
       log.error("Error deleting transaction with id: {}", id, e);
       return ResponseEntity.status(500)
         .body(Result.error("Failed to delete transaction", ApiErrorCode.TRANSACTION_DELETION_ERROR));
+    }
+  }
+
+  @PostMapping("/sign")
+  @Operation(summary = "Sign a transaction", description = "Cryptographically sign a pending transaction using ECDSA")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Transaction signed successfully", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "400", description = "Invalid request or transaction cannot be signed", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
+  })
+  public ResponseEntity<Result<SignTransactionResponseDto>> signTransaction(
+      @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Transaction signing details", required = true) @Valid @RequestBody SignTransactionRequestDto request) {
+    log.info("Signing transaction with id: {}", request.getTransactionId());
+    try {
+      SignTransactionResponseDto result = transactionService.signTransaction(request);
+      return ResponseEntity.ok(Result.success(result, result.getMessage()));
+    } catch (Exception e) {
+      log.error("Error signing transaction with id: {}", request.getTransactionId(), e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to sign transaction", ApiErrorCode.TRANSACTION_SIGNING_ERROR));
     }
   }
 }

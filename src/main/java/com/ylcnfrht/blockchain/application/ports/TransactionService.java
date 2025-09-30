@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Optional;
 
 import com.ylcnfrht.blockchain.application.dtos.request.CreateTransactionRequestDto;
+import com.ylcnfrht.blockchain.application.dtos.request.SignTransactionRequestDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateTransactionResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.SignTransactionResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.TransactionResponseDto;
 
 public interface TransactionService {
@@ -16,4 +18,5 @@ public interface TransactionService {
   CreateTransactionResponseDto createTransaction(CreateTransactionRequestDto request);
   Optional<TransactionResponseDto> updateTransaction(Long id, CreateTransactionRequestDto request);
   boolean deleteTransaction(Long id);
+  SignTransactionResponseDto signTransaction(SignTransactionRequestDto request);
 }

@@ -116,4 +116,12 @@ public class WalletApplicationException extends ApplicationException {
             "Failed to update wallet balances"
         );
     }
+    
+    public static WalletApplicationException keyPairGenerationFailed(String reason) {
+        return new WalletApplicationException(
+            ErrorCode.KEY_PAIR_GENERATION_FAILED,
+            "Failed to generate key pair: " + reason,
+            "Failed to generate key pair"
+        );
+    }
 }

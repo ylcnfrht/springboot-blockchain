@@ -19,8 +19,8 @@ import com.ylcnfrht.blockchain.domain.blockchain.Block;
 import com.ylcnfrht.blockchain.domain.blockchain.BlockRepositoryPort;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
-import com.ylcnfrht.blockchain.domain.services.BlockchainValidationDomainService;
-import com.ylcnfrht.blockchain.domain.services.MiningDomainService;
+import com.ylcnfrht.blockchain.domain.domainservices.BlockchainValidationDomainService;
+import com.ylcnfrht.blockchain.domain.domainservices.MiningDomainService;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.domain.transaction.TransactionRepositoryPort;
 import com.ylcnfrht.blockchain.domain.wallet.WalletRepositoryPort;
@@ -142,11 +142,16 @@ public class BlockchainApplicationServiceImpl implements BlockchainApplicationSe
       Block savedBlock = blockRepository.save(minedBlock);
       log.info("Block saved with ID: {}", savedBlock.getId());
 
-      log.info("Marking {} transactions as mined", pendingTransactions.size());
-      
-      for (Transaction tx : pendingTransactions) {
-        tx.setMined(true);
-        transactionRepository.save(tx);
+      // Persist all transactions included in the mined block (including reward)
+      log.info("Marking {} transactions as mined (including reward if present)", minedBlock.getTransactions().size());
+      for (Transaction tx : minedBlock.getTransactions()) {
+        try {
+          tx.setMined(true);
+          transactionRepository.saveWithBlock(tx, savedBlock);
+        } catch (Exception e) {
+          log.error("Failed to persist mined transaction with id: {}", tx.getId() != null ? tx.getId().getValue() : null, e);
+          throw new RuntimeException("Failed to persist mined transaction: " + e.getMessage(), e);
+        }
       }
 
       log.info("Updating wallet balances after mining");

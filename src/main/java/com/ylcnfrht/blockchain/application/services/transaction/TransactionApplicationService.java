@@ -1,5 +1,6 @@
 package com.ylcnfrht.blockchain.application.services.transaction;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -7,21 +8,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ylcnfrht.blockchain.application.dtos.request.CreateTransactionRequestDto;
+import com.ylcnfrht.blockchain.application.dtos.request.SignTransactionRequestDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateTransactionResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.SignTransactionResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.TransactionResponseDto;
 import com.ylcnfrht.blockchain.application.exceptions.TransactionApplicationException;
 import com.ylcnfrht.blockchain.application.mappers.TransactionDtoMapper;
 import com.ylcnfrht.blockchain.application.ports.TransactionService;
 import com.ylcnfrht.blockchain.application.services.wallet.WalletApplicationService;
 import com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance;
+import com.ylcnfrht.blockchain.domain.common.services.SigningService;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
-import com.ylcnfrht.blockchain.domain.services.TransactionValidationDomainService;
+import com.ylcnfrht.blockchain.domain.domainservices.TransactionValidationDomainService;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.domain.transaction.TransactionRepositoryPort;
 import com.ylcnfrht.blockchain.domain.transaction.valueobjects.Amount;
 import com.ylcnfrht.blockchain.domain.transaction.valueobjects.Signature;
 import com.ylcnfrht.blockchain.domain.wallet.valueobjects.Address;
+import com.ylcnfrht.blockchain.infrastructure.crypto.ECDSASigningService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +41,7 @@ public class TransactionApplicationService implements TransactionService {
   private final WalletApplicationService walletApplicationService;
   private final TransactionDtoMapper transactionDtoMapper;
   private final TransactionValidationDomainService transactionValidationDomainService;
+  private final SigningService signingService;
 
   public List<TransactionResponseDto> getAllTransactions() {
     log.info("Getting all transactions from repository");
@@ -123,6 +129,13 @@ public class TransactionApplicationService implements TransactionService {
 
       Balance currentBalance = null;
       if (fromAddress != null) {
+        // 1) Available balance check (confirmed - pending outgoing)
+        boolean hasEnoughBalance = walletApplicationService.hasEnoughBalance(fromAddress.getValue(), request.getAmount());
+        if (!hasEnoughBalance) {
+          throw TransactionApplicationException.insufficientBalance(fromAddress.getValue(), request.getAmount().toString());
+        }
+
+        // 2) Pass confirmed balance to domain validation as currentBalance
         var balanceResponse = walletApplicationService.getWalletBalance(fromAddress.getValue());
         currentBalance = Balance.of(balanceResponse.getBalance());
       }
@@ -192,6 +205,47 @@ public class TransactionApplicationService implements TransactionService {
     } catch (Exception e) {
       log.error("Error finding transaction for deletion with id: {}", id, e);
       throw TransactionApplicationException.transactionDeletionFailed(id, e.getMessage());
+    }
+  }
+
+  @Override
+  public SignTransactionResponseDto signTransaction(SignTransactionRequestDto request) {
+    log.info("Signing transaction with id: {}", request.getTransactionId());
+    try {
+      return transactionRepository.findById(Id.of(request.getTransactionId()))
+          .filter(tx -> !tx.isMined())
+          .map(transaction -> {
+            try {
+              if (transaction.isSigned()) {
+                log.warn("Transaction {} is already signed", request.getTransactionId());
+                throw TransactionApplicationException.transactionAlreadySigned(request.getTransactionId());
+              }
+              
+              // Create private key from string
+              var privateKey = ECDSASigningService.createPrivateKey(request.getPrivateKey());
+              
+              // Sign the transaction
+              transaction.sign(privateKey, signingService);
+              
+              // Save the signed transaction
+              Transaction savedTransaction = transactionRepository.save(transaction);
+              
+              log.info("Successfully signed transaction with id: {}", request.getTransactionId());
+              return transactionDtoMapper.toSignTransactionResponseDto(savedTransaction, "Transaction signed successfully");
+            } catch (Exception e) {
+              log.error("Error signing transaction with id: {}", request.getTransactionId(), e);
+              throw TransactionApplicationException.transactionSigningFailed(request.getTransactionId(), e.getMessage());
+            }
+          })
+          .orElseThrow(() -> {
+            log.warn("Transaction not found or already mined with id: {}", request.getTransactionId());
+            return TransactionApplicationException.transactionNotFound(request.getTransactionId());
+          });
+    } catch (TransactionApplicationException e) {
+      throw e;
+    } catch (Exception e) {
+      log.error("Error finding transaction for signing with id: {}", request.getTransactionId(), e);
+      throw TransactionApplicationException.transactionSigningFailed(request.getTransactionId(), e.getMessage());
     }
   }
 

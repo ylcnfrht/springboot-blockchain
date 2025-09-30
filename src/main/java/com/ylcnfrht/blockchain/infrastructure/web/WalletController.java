@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ylcnfrht.blockchain.application.dtos.request.CreateWalletRequestDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateWalletResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.KeyPairResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletBalanceResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletResponseDto;
 import com.ylcnfrht.blockchain.application.ports.WalletService;
@@ -203,6 +204,24 @@ public class WalletController {
             log.error("Error deactivating wallet with id: {}", id, e);
             return ResponseEntity.status(500)
                 .body(Result.error("Failed to deactivate wallet", ApiErrorCode.WALLET_UPDATE_ERROR));
+        }
+    }
+
+    @PostMapping("/generate-keypair")
+    @Operation(summary = "Generate ECDSA key pair", description = "Generate a new ECDSA key pair for wallet creation")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Key pair generated successfully", content = @Content(schema = @Schema(implementation = Result.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
+    })
+    public ResponseEntity<Result<KeyPairResponseDto>> generateKeyPair() {
+        log.info("Generating new ECDSA key pair");
+        try {
+            KeyPairResponseDto keyPair = walletService.generateKeyPair();
+            return ResponseEntity.ok(Result.success(keyPair, keyPair.getMessage()));
+        } catch (Exception e) {
+            log.error("Error generating key pair", e);
+            return ResponseEntity.status(500)
+                .body(Result.error("Failed to generate key pair", ApiErrorCode.WALLET_ERROR));
         }
     }
 }

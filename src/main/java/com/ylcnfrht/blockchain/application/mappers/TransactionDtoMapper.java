@@ -3,6 +3,7 @@ package com.ylcnfrht.blockchain.application.mappers;
 import org.springframework.stereotype.Component;
 
 import com.ylcnfrht.blockchain.application.dtos.response.CreateTransactionResponseDto;
+import com.ylcnfrht.blockchain.application.dtos.response.SignTransactionResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.TransactionResponseDto;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 
@@ -30,6 +31,15 @@ public class TransactionDtoMapper {
         .signature(transaction.getSignature() != null ? transaction.getSignature().getValue() : null)
         .timestamp(transaction.getTimestamp().getValue())
         .mined(transaction.isMined())
+        .build();
+  }
+
+  public SignTransactionResponseDto toSignTransactionResponseDto(Transaction transaction, String message) {
+    return SignTransactionResponseDto.builder()
+        .transactionId(transaction.getId().getValue())
+        .signature(transaction.getSignature() != null ? transaction.getSignature().getValue() : null)
+        .signed(transaction.isSigned())
+        .message(message)
         .build();
   }
 }
