@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ylcnfrht.blockchain.application.dtos.request.CreateTransactionRequestDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateTransactionResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.TransactionResponseDto;
+import com.ylcnfrht.blockchain.application.exceptions.TransactionApplicationException;
 import com.ylcnfrht.blockchain.application.mappers.TransactionDtoMapper;
 import com.ylcnfrht.blockchain.application.ports.TransactionService;
 import com.ylcnfrht.blockchain.application.services.wallet.WalletApplicationService;
@@ -36,87 +37,166 @@ public class TransactionApplicationService implements TransactionService {
   private final TransactionValidationDomainService transactionValidationDomainService;
 
   public List<TransactionResponseDto> getAllTransactions() {
-    return transactionRepository.findAll().stream()
-        .map(transactionDtoMapper::toTransactionResponseDto)
-        .toList();
+    log.info("Getting all transactions from repository");
+    try {
+      List<Transaction> transactions = transactionRepository.findAll();
+      log.info("Successfully retrieved {} transactions", transactions.size());
+      return transactions.stream()
+          .map(transactionDtoMapper::toTransactionResponseDto)
+          .toList();
+    } catch (Exception e) {
+      log.error("Error getting all transactions", e);
+      throw TransactionApplicationException.getAllTransactionsFailed(e.getMessage());
+    }
   }
 
   public Optional<TransactionResponseDto> getTransactionById(Long id) {
-    return transactionRepository.findById(Id.of(id))
-        .map(transactionDtoMapper::toTransactionResponseDto);
+    log.info("Getting transaction by id: {}", id);
+    try {
+      Optional<Transaction> transactionOpt = transactionRepository.findById(Id.of(id));
+      if (transactionOpt.isPresent()) {
+        log.info("Successfully retrieved transaction with id: {}", id);
+        return transactionOpt.map(transactionDtoMapper::toTransactionResponseDto);
+      } else {
+        log.warn("Transaction not found with id: {}", id);
+        return Optional.empty();
+      }
+    } catch (Exception e) {
+      log.error("Error getting transaction by id: {}", id, e);
+      throw TransactionApplicationException.getTransactionByIdFailed(id, e.getMessage());
+    }
   }
 
   public Optional<TransactionResponseDto> getTransactionByHash(String hash) {
-    return transactionRepository.findByHash(Hash.of(hash))
-        .map(transactionDtoMapper::toTransactionResponseDto);
+    log.info("Getting transaction by hash: {}", hash);
+    try {
+      Optional<Transaction> transactionOpt = transactionRepository.findByHash(Hash.of(hash));
+      if (transactionOpt.isPresent()) {
+        log.info("Successfully retrieved transaction with hash: {}", hash);
+        return transactionOpt.map(transactionDtoMapper::toTransactionResponseDto);
+      } else {
+        log.warn("Transaction not found with hash: {}", hash);
+        return Optional.empty();
+      }
+    } catch (Exception e) {
+      log.error("Error getting transaction by hash: {}", hash, e);
+      throw TransactionApplicationException.getTransactionByHashFailed(hash, e.getMessage());
+    }
   }
 
   public List<TransactionResponseDto> getTransactionsByAddress(String address) {
-    return transactionRepository.findByAddress(Address.of(address)).stream()
-        .map(transactionDtoMapper::toTransactionResponseDto)
-        .toList();
+    log.info("Getting transactions by address: {}", address);
+    try {
+      List<Transaction> transactions = transactionRepository.findByAddress(Address.of(address));
+      log.info("Successfully retrieved {} transactions for address: {}", transactions.size(), address);
+      return transactions.stream()
+          .map(transactionDtoMapper::toTransactionResponseDto)
+          .toList();
+    } catch (Exception e) {
+      log.error("Error getting transactions by address: {}", address, e);
+      throw TransactionApplicationException.getTransactionsByAddressFailed(address, e.getMessage());
+    }
   }
 
   public List<TransactionResponseDto> getPendingTransactions() {
-    return transactionRepository.findPending().stream()
-        .map(transactionDtoMapper::toTransactionResponseDto)
-        .toList();
+    log.info("Getting pending transactions");
+    try {
+      List<Transaction> pendingTransactions = transactionRepository.findPending();
+      log.info("Successfully retrieved {} pending transactions", pendingTransactions.size());
+      return pendingTransactions.stream()
+          .map(transactionDtoMapper::toTransactionResponseDto)
+          .toList();
+    } catch (Exception e) {
+      log.error("Error getting pending transactions", e);
+      throw TransactionApplicationException.getPendingTransactionsFailed(e.getMessage());
+    }
   }
 
   public CreateTransactionResponseDto createTransaction(CreateTransactionRequestDto request) {
-    Address fromAddress = request.getFromAddress() != null ? Address.of(request.getFromAddress()) : null;
-    Address toAddress = Address.of(request.getToAddress());
-    Amount amount = Amount.of(request.getAmount());
+    log.info("Creating transaction from {} to {} amount {}", 
+        request.getFromAddress(), request.getToAddress(), request.getAmount());
+    try {
+      Address fromAddress = request.getFromAddress() != null ? Address.of(request.getFromAddress()) : null;
+      Address toAddress = Address.of(request.getToAddress());
+      Amount amount = Amount.of(request.getAmount());
 
-    // Get current balance for validation if fromAddress is provided
-    com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance currentBalance = null;
-    if (fromAddress != null) {
-      // Get balance using wallet service
-      var balanceResponse = walletApplicationService.getWalletBalance(fromAddress.getValue());
-      currentBalance = com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance.of(balanceResponse.getBalance());
+      // Get current balance for validation if fromAddress is provided
+      com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance currentBalance = null;
+      if (fromAddress != null) {
+        // Get balance using wallet service
+        var balanceResponse = walletApplicationService.getWalletBalance(fromAddress.getValue());
+        currentBalance = com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance.of(balanceResponse.getBalance());
+      }
+
+      // Validate transaction creation using domain service
+      transactionValidationDomainService.validateTransactionCreation(fromAddress, toAddress, amount, currentBalance);
+
+      Transaction transaction = Transaction.create(fromAddress, toAddress, amount);
+      if (request.getSignature() != null) {
+        transaction.setSignature(Signature.of(request.getSignature()));
+      }
+
+      Transaction savedTransaction = transactionRepository.save(transaction);
+      log.info("Successfully created transaction with id: {} to: {} amount: {}", 
+          savedTransaction.getId().getValue(), savedTransaction.getToAddress(), savedTransaction.getAmount());
+      return transactionDtoMapper.toCreateTransactionResponseDto(savedTransaction);
+    } catch (Exception e) {
+      log.error("Error creating transaction from {} to {} amount {}", 
+          request.getFromAddress(), request.getToAddress(), request.getAmount(), e);
+      throw TransactionApplicationException.transactionCreationFailed(e.getMessage());
     }
-
-    // Validate transaction creation using domain service
-    transactionValidationDomainService.validateTransactionCreation(fromAddress, toAddress, amount, currentBalance);
-
-    Transaction transaction = Transaction.create(fromAddress, toAddress, amount);
-    if (request.getSignature() != null) {
-      transaction.setSignature(Signature.of(request.getSignature()));
-    }
-
-    Transaction savedTransaction = transactionRepository.save(transaction);
-    log.info("Created new transaction to: {} amount: {}", savedTransaction.getToAddress(), savedTransaction.getAmount());
-    return transactionDtoMapper.toCreateTransactionResponseDto(savedTransaction);
   }
 
   public Optional<TransactionResponseDto> updateTransaction(Long id, CreateTransactionRequestDto request) {
-    return transactionRepository.findById(Id.of(id))
-        .filter(tx -> !tx.isMined())
-        .map(existingTransaction -> {
-          // Validate transaction update using domain service
-          transactionValidationDomainService.validateTransactionUpdate(existingTransaction);
-          
-          if (request.getSignature() != null) {
-            existingTransaction.setSignature(Signature.of(request.getSignature()));
-          }
-            Transaction updatedTransaction = transactionRepository.save(existingTransaction);
-            log.info("Updated transaction with id: {}", id);
-            return transactionDtoMapper.toTransactionResponseDto(updatedTransaction);
-        });
+    log.info("Updating transaction with id: {}", id);
+    try {
+      return transactionRepository.findById(Id.of(id))
+          .filter(tx -> !tx.isMined())
+          .map(existingTransaction -> {
+            try {
+              // Validate transaction update using domain service
+              transactionValidationDomainService.validateTransactionUpdate(existingTransaction);
+              
+              if (request.getSignature() != null) {
+                existingTransaction.setSignature(Signature.of(request.getSignature()));
+              }
+              Transaction updatedTransaction = transactionRepository.save(existingTransaction);
+              log.info("Successfully updated transaction with id: {}", id);
+              return transactionDtoMapper.toTransactionResponseDto(updatedTransaction);
+            } catch (Exception e) {
+              log.error("Error updating transaction with id: {}", id, e);
+              throw TransactionApplicationException.transactionUpdateFailed(id, e.getMessage());
+            }
+          });
+    } catch (Exception e) {
+      log.error("Error finding transaction for update with id: {}", id, e);
+      throw TransactionApplicationException.transactionUpdateFailed(id, e.getMessage());
+    }
   }
 
   public boolean deleteTransaction(Long id) {
-    return transactionRepository.findById(Id.of(id))
-        .filter(tx -> !tx.isMined())
-        .map(transaction -> {
-          // Validate transaction deletion using domain service
-          transactionValidationDomainService.validateTransactionDeletion(transaction);
-          
-          transactionRepository.delete(transaction);
-          log.info("Deleted transaction with id: {}", id);
-          return true;
-        })
-        .orElse(false);
+    log.info("Deleting transaction with id: {}", id);
+    try {
+      return transactionRepository.findById(Id.of(id))
+          .filter(tx -> !tx.isMined())
+          .map(transaction -> {
+            try {
+              // Validate transaction deletion using domain service
+              transactionValidationDomainService.validateTransactionDeletion(transaction);
+              
+              transactionRepository.delete(transaction);
+              log.info("Successfully deleted transaction with id: {}", id);
+              return true;
+            } catch (Exception e) {
+              log.error("Error deleting transaction with id: {}", id, e);
+              throw TransactionApplicationException.transactionDeletionFailed(id, e.getMessage());
+            }
+          })
+          .orElse(false);
+    } catch (Exception e) {
+      log.error("Error finding transaction for deletion with id: {}", id, e);
+      throw TransactionApplicationException.transactionDeletionFailed(id, e.getMessage());
+    }
   }
 
 }

@@ -11,9 +11,11 @@ import com.ylcnfrht.blockchain.application.dtos.request.CreateWalletRequestDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateWalletResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletBalanceResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.WalletResponseDto;
+import com.ylcnfrht.blockchain.application.exceptions.WalletApplicationException;
 import com.ylcnfrht.blockchain.application.mappers.WalletDtoMapper;
 import com.ylcnfrht.blockchain.application.ports.WalletService;
 import com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance;
+import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
 import com.ylcnfrht.blockchain.domain.services.WalletBalanceDomainService;
 import com.ylcnfrht.blockchain.domain.services.WalletSecurityDomainService;
 import com.ylcnfrht.blockchain.domain.transaction.Transaction;
@@ -41,93 +43,156 @@ public class WalletApplicationService implements WalletService {
     log.info("Getting all wallets from repository");
     try {
       List<Wallet> wallets = walletRepository.findByActiveTrue();
-      log.info("Found {} wallets", wallets.size());
+      log.info("Successfully retrieved {} wallets", wallets.size());
       return wallets.stream()
           .map(walletDtoMapper::toWalletResponseDto)
           .toList();
     } catch (Exception e) {
-      log.error("Error getting wallets", e);
-      throw e;
+      log.error("Error getting all wallets", e);
+      throw WalletApplicationException.getAllWalletsFailed(e.getMessage());
     }
   }
 
   public Optional<WalletResponseDto> getWalletById(Long id) {
-    return walletRepository.findById(id)
-        .map(walletDtoMapper::toWalletResponseDto);
+    log.info("Getting wallet by id: {}", id);
+    try {
+      Optional<Wallet> walletOpt = walletRepository.findById(Id.of(id));
+      if (walletOpt.isPresent()) {
+        log.info("Successfully retrieved wallet with id: {}", id);
+        return walletOpt.map(walletDtoMapper::toWalletResponseDto);
+      } else {
+        log.warn("Wallet not found with id: {}", id);
+        return Optional.empty();
+      }
+    } catch (Exception e) {
+      log.error("Error getting wallet by id: {}", id, e);
+      throw WalletApplicationException.getWalletByIdFailed(id, e.getMessage());
+    }
   }
 
   public Optional<WalletResponseDto> getWalletByAddress(String address) {
-    return walletRepository.findByAddress(address)
-        .map(walletDtoMapper::toWalletResponseDto);
+    log.info("Getting wallet by address: {}", address);
+    try {
+      Optional<Wallet> walletOpt = walletRepository.findByAddress(address);
+      if (walletOpt.isPresent()) {
+        log.info("Successfully retrieved wallet with address: {}", address);
+        return walletOpt.map(walletDtoMapper::toWalletResponseDto);
+      } else {
+        log.warn("Wallet not found with address: {}", address);
+        return Optional.empty();
+      }
+    } catch (Exception e) {
+      log.error("Error getting wallet by address: {}", address, e);
+      throw WalletApplicationException.getWalletByAddressFailed(address, e.getMessage());
+    }
   }
 
   public CreateWalletResponseDto createWallet(CreateWalletRequestDto request) {
-    Address address = Address.of(request.getAddress());
-    
-    // Validate address uniqueness using domain service
-    walletSecurityDomainService.validateAddressUniqueness(address, 
-        addr -> walletRepository.existsByAddress(addr.getValue()));
-    
-    // Validate wallet creation parameters using domain service
-    walletSecurityDomainService.validateWalletCreation(
-        address, 
-        request.getPublicKey(), 
-        request.getPrivateKey()
-    );
+    log.info("Creating wallet with address: {}", request.getAddress());
+    try {
+      Address address = Address.of(request.getAddress());
+      
+      // Validate address uniqueness using domain service
+      walletSecurityDomainService.validateAddressUniqueness(address, 
+          addr -> walletRepository.existsByAddress(addr.getValue()));
+      
+      // Validate wallet creation parameters using domain service
+      walletSecurityDomainService.validateWalletCreation(
+          address, 
+          request.getPublicKey(), 
+          request.getPrivateKey()
+      );
 
-    Wallet wallet = Wallet.create(
-        address,
-        request.getPublicKey(),
-        request.getPrivateKey()
-    );
+      Wallet wallet = Wallet.create(
+          address,
+          request.getPublicKey(),
+          request.getPrivateKey()
+      );
 
-    Wallet savedWallet = walletRepository.save(wallet);
-    log.info("Created new wallet with address: {}", savedWallet.getAddress().getValue());
-    return walletDtoMapper.toCreateWalletResponseDto(savedWallet);
+      Wallet savedWallet = walletRepository.save(wallet);
+      log.info("Successfully created wallet with address: {}", savedWallet.getAddress().getValue());
+      return walletDtoMapper.toCreateWalletResponseDto(savedWallet);
+    } catch (Exception e) {
+      log.error("Error creating wallet with address: {}", request.getAddress(), e);
+      throw WalletApplicationException.walletCreationFailed(e.getMessage());
+    }
   }
 
   public Optional<WalletResponseDto> updateWallet(Long id, CreateWalletRequestDto request) {
-    return walletRepository.findById(id)
-        .map(existingWallet -> {
-          if (request.getPrivateKey() != null) {
-            // Validate key rotation using domain service
-            walletSecurityDomainService.validateKeyRotation(
-                request.getPrivateKey(), 
-                existingWallet.getPublicKey()
-            );
-            existingWallet.rotateKeys(existingWallet.getPublicKey(), request.getPrivateKey());
-          }
+    log.info("Updating wallet with id: {}", id);
+    try {
+      return walletRepository.findById(Id.of(id))
+          .map(existingWallet -> {
+            try {
+              if (request.getPrivateKey() != null) {
+                // Validate key rotation using domain service
+                walletSecurityDomainService.validateKeyRotation(
+                    request.getPrivateKey(), 
+                    existingWallet.getPublicKey()
+                );
+                existingWallet.rotateKeys(existingWallet.getPublicKey(), request.getPrivateKey());
+              }
 
-            Wallet updatedWallet = walletRepository.save(existingWallet);
-            log.info("Updated wallet with id: {}", id);
-            return walletDtoMapper.toWalletResponseDto(updatedWallet);
-        });
+              Wallet updatedWallet = walletRepository.save(existingWallet);
+              log.info("Successfully updated wallet with id: {}", id);
+              return walletDtoMapper.toWalletResponseDto(updatedWallet);
+            } catch (Exception e) {
+              log.error("Error updating wallet with id: {}", id, e);
+              throw WalletApplicationException.walletUpdateFailed(id, e.getMessage());
+            }
+          });
+    } catch (Exception e) {
+      log.error("Error finding wallet for update with id: {}", id, e);
+      throw WalletApplicationException.walletUpdateFailed(id, e.getMessage());
+    }
   }
 
   public boolean deleteWallet(Long id) {
-    return walletRepository.findById(id)
-        .map(wallet -> {
-          wallet.deactivate();
-          walletRepository.save(wallet);
-          log.info("Deactivated wallet with id: {}", id);
-          return true;
-        })
-        .orElse(false);
+    log.info("Deleting wallet with id: {}", id);
+    try {
+      return walletRepository.findById(Id.of(id))
+          .map(wallet -> {
+            try {
+              wallet.deactivate();
+              walletRepository.save(wallet);
+              log.info("Successfully deactivated wallet with id: {}", id);
+              return true;
+            } catch (Exception e) {
+              log.error("Error deactivating wallet with id: {}", id, e);
+              throw WalletApplicationException.walletDeletionFailed(id, e.getMessage());
+            }
+          })
+          .orElse(false);
+    } catch (Exception e) {
+      log.error("Error finding wallet for deletion with id: {}", id, e);
+      throw WalletApplicationException.walletDeletionFailed(id, e.getMessage());
+    }
   }
 
   public Optional<WalletResponseDto> deactivateWallet(Long id) {
-    return walletRepository.findById(id)
-        .map(wallet -> {
-          wallet.deactivate();
-            Wallet deactivatedWallet = walletRepository.save(wallet);
-            log.info("Deactivated wallet with id: {}", id);
-            return walletDtoMapper.toWalletResponseDto(deactivatedWallet);
-        });
+    log.info("Deactivating wallet with id: {}", id);
+    try {
+      return walletRepository.findById(Id.of(id))
+          .map(wallet -> {
+            try {
+              wallet.deactivate();
+              Wallet deactivatedWallet = walletRepository.save(wallet);
+              log.info("Successfully deactivated wallet with id: {}", id);
+              return walletDtoMapper.toWalletResponseDto(deactivatedWallet);
+            } catch (Exception e) {
+              log.error("Error deactivating wallet with id: {}", id, e);
+              throw WalletApplicationException.walletDeletionFailed(id, e.getMessage());
+            }
+          });
+    } catch (Exception e) {
+      log.error("Error finding wallet for deactivation with id: {}", id, e);
+      throw WalletApplicationException.walletDeletionFailed(id, e.getMessage());
+    }
   }
 
   public WalletBalanceResponseDto getWalletBalance(String address) {
+    log.info("Getting wallet balance for address: {}", address);
     try {
-      log.info("Getting wallet balance for address: {}", address);
       Address walletAddress = Address.of(address);
       log.info("Created wallet address: {}", walletAddress.getValue());
       
@@ -148,35 +213,61 @@ public class WalletApplicationService implements WalletService {
       Balance pendingBalance = walletBalanceDomainService.calculatePendingBalance(walletAddress, pendingTransactions);
       log.info("Calculated pending balance: {}", pendingBalance.getValue());
 
+      log.info("Successfully calculated balance for address: {}", address);
       return walletDtoMapper.toWalletBalanceResponseDto(address, confirmedBalance.getValue(), pendingBalance.getValue());
     } catch (Exception e) {
       log.error("Error getting wallet balance for address: {}", address, e);
-      throw e;
+      throw WalletApplicationException.balanceCalculationFailed(address, e.getMessage());
     }
   }
 
 
   public boolean hasEnoughBalance(String address, BigDecimal amount) {
-    Address walletAddress = Address.of(address);
-    List<Transaction> transactions = transactionRepository.findByAddress(walletAddress);
-    return walletBalanceDomainService.hasEnoughBalance(walletAddress, amount, transactions);
+    log.info("Checking if wallet {} has enough balance for amount: {}", address, amount);
+    try {
+      Address walletAddress = Address.of(address);
+      List<Transaction> transactions = transactionRepository.findByAddress(walletAddress);
+      boolean hasEnough = walletBalanceDomainService.hasEnoughBalance(walletAddress, amount, transactions);
+      log.info("Wallet {} has enough balance: {}", address, hasEnough);
+      return hasEnough;
+    } catch (Exception e) {
+      log.error("Error checking balance for wallet {} with amount: {}", address, amount, e);
+      throw WalletApplicationException.balanceCheckFailed(address, amount.toString(), e.getMessage());
+    }
   }
 
   public List<Transaction> getWalletTransactionHistory(String address) {
-    return transactionRepository.findByAddress(Address.of(address));
+    log.info("Getting transaction history for wallet: {}", address);
+    try {
+      List<Transaction> transactions = transactionRepository.findByAddress(Address.of(address));
+      log.info("Successfully retrieved {} transactions for wallet: {}", transactions.size(), address);
+      return transactions;
+    } catch (Exception e) {
+      log.error("Error getting transaction history for wallet: {}", address, e);
+      throw WalletApplicationException.transactionHistoryFailed(address, e.getMessage());
+    }
   }
 
   public void updateWalletBalancesAfterMining() {
-    List<Wallet> wallets = walletRepository.findByActiveTrue();
-    List<Transaction> allTransactions = transactionRepository.findAll();
+    log.info("Updating wallet balances after mining");
+    try {
+      List<Wallet> wallets = walletRepository.findByActiveTrue();
+      List<Transaction> allTransactions = transactionRepository.findAll();
+      log.info("Found {} wallets and {} transactions for balance update", wallets.size(), allTransactions.size());
 
-    // Use domain service for balance updates
-    walletBalanceDomainService.updateWalletBalancesAfterMining(wallets, allTransactions);
-    
-    // Save updated wallets
-    for (Wallet wallet : wallets) {
-      walletRepository.save(wallet);
-      log.info("Updated wallet balance for {}: {}", wallet.getAddress().getValue(), wallet.getBalance().getValue());
+      // Use domain service for balance updates
+      walletBalanceDomainService.updateWalletBalancesAfterMining(wallets, allTransactions);
+      
+      // Save updated wallets
+      for (Wallet wallet : wallets) {
+        walletRepository.save(wallet);
+        log.info("Updated wallet balance for {}: {}", wallet.getAddress().getValue(), wallet.getBalance().getValue());
+      }
+      
+      log.info("Successfully updated balances for {} wallets after mining", wallets.size());
+    } catch (Exception e) {
+      log.error("Error updating wallet balances after mining", e);
+      throw WalletApplicationException.balanceUpdateFailed(e.getMessage());
     }
   }
 

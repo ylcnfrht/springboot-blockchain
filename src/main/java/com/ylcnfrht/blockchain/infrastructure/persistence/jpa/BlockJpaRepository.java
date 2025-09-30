@@ -23,10 +23,8 @@ public interface BlockJpaRepository extends JpaRepository<BlockEntity, Long> {
 
   List<BlockEntity> findByMinedFalse();
   
-  List<BlockEntity> findByActiveTrue();
-  
   // Custom queries
-  @Query("SELECT b FROM BlockEntity b WHERE b.mined = true ORDER BY b.createdAt DESC")
+  @Query("SELECT b FROM BlockEntity b WHERE b.mined = true ORDER BY b.timestamp DESC")
   List<BlockEntity> findMinedBlocksOrderByCreatedAt();
   
   @Query("SELECT COUNT(b) FROM BlockEntity b WHERE b.mined = true")

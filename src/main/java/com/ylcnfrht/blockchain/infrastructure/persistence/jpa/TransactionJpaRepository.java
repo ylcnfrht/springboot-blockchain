@@ -28,10 +28,8 @@ public interface TransactionJpaRepository extends JpaRepository<TransactionEntit
 
   List<TransactionEntity> findByMinedTrue();
   
-  List<TransactionEntity> findByActiveTrue();
-  
   // Custom queries
-  @Query("SELECT t FROM TransactionEntity t WHERE t.mined = false ORDER BY t.createdAt ASC")
+  @Query("SELECT t FROM TransactionEntity t WHERE t.mined = false ORDER BY t.timestamp ASC")
   List<TransactionEntity> findPendingTransactions();
   
   @Query("SELECT COUNT(t) FROM TransactionEntity t WHERE t.mined = false")
