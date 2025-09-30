@@ -50,6 +50,6 @@ public class BlockEntity {
   @Builder.Default
   private Boolean mined = false;
 
-  @OneToMany(mappedBy = "block", fetch = FetchType.LAZY) // ya da EAGER
+  @OneToMany(mappedBy = "block", fetch = FetchType.LAZY)
   private List<TransactionEntity> transactions;
 }

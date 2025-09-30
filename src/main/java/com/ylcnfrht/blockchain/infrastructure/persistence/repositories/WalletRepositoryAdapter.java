@@ -5,9 +5,9 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
+import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
 import com.ylcnfrht.blockchain.domain.wallet.Wallet;
 import com.ylcnfrht.blockchain.domain.wallet.WalletRepositoryPort;
-import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
 import com.ylcnfrht.blockchain.infrastructure.persistence.jpa.WalletJpaRepository;
 import com.ylcnfrht.blockchain.infrastructure.persistence.mappers.WalletMapper;
 
@@ -22,7 +22,6 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
     this.mapper = mapper;
   }
 
-  // ReadRepository methods
   @Override
   public Optional<Wallet> findById(Id<Long> id) {
     return jpaRepository.findById(id.getValue()).map(mapper::toDomain);
@@ -43,12 +42,7 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
     return jpaRepository.count();
   }
 
-  @Override
-  public List<Wallet> findByActiveTrue() {
-    return jpaRepository.findByActiveTrue().stream().map(mapper::toDomain).toList();
-  }
 
-  // Wallet-specific read methods
   @Override
   public Optional<Wallet> findByAddress(String address) {
     return jpaRepository.findByAddress(address).map(mapper::toDomain);
@@ -64,7 +58,6 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
     return jpaRepository.existsByAddress(address);
   }
 
-  // WriteRepository methods
   @Override
   public Wallet save(Wallet wallet) {
     return mapper.toDomain(jpaRepository.save(mapper.toEntity(wallet)));

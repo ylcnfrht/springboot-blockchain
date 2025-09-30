@@ -13,6 +13,7 @@ import com.ylcnfrht.blockchain.application.exceptions.TransactionApplicationExce
 import com.ylcnfrht.blockchain.application.mappers.TransactionDtoMapper;
 import com.ylcnfrht.blockchain.application.ports.TransactionService;
 import com.ylcnfrht.blockchain.application.services.wallet.WalletApplicationService;
+import com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
 import com.ylcnfrht.blockchain.domain.services.TransactionValidationDomainService;
@@ -120,15 +121,12 @@ public class TransactionApplicationService implements TransactionService {
       Address toAddress = Address.of(request.getToAddress());
       Amount amount = Amount.of(request.getAmount());
 
-      // Get current balance for validation if fromAddress is provided
-      com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance currentBalance = null;
+      Balance currentBalance = null;
       if (fromAddress != null) {
-        // Get balance using wallet service
         var balanceResponse = walletApplicationService.getWalletBalance(fromAddress.getValue());
-        currentBalance = com.ylcnfrht.blockchain.domain.blockchain.valueobjects.Balance.of(balanceResponse.getBalance());
+        currentBalance = Balance.of(balanceResponse.getBalance());
       }
 
-      // Validate transaction creation using domain service
       transactionValidationDomainService.validateTransactionCreation(fromAddress, toAddress, amount, currentBalance);
 
       Transaction transaction = Transaction.create(fromAddress, toAddress, amount);
@@ -154,7 +152,6 @@ public class TransactionApplicationService implements TransactionService {
           .filter(tx -> !tx.isMined())
           .map(existingTransaction -> {
             try {
-              // Validate transaction update using domain service
               transactionValidationDomainService.validateTransactionUpdate(existingTransaction);
               
               if (request.getSignature() != null) {
@@ -181,7 +178,6 @@ public class TransactionApplicationService implements TransactionService {
           .filter(tx -> !tx.isMined())
           .map(transaction -> {
             try {
-              // Validate transaction deletion using domain service
               transactionValidationDomainService.validateTransactionDeletion(transaction);
               
               transactionRepository.delete(transaction);

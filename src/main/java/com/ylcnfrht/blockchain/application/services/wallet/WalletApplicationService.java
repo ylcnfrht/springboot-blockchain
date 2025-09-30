@@ -42,7 +42,7 @@ public class WalletApplicationService implements WalletService {
   public List<WalletResponseDto> getAllWallets() {
     log.info("Getting all wallets from repository");
     try {
-      List<Wallet> wallets = walletRepository.findByActiveTrue();
+      List<Wallet> wallets = walletRepository.findAll();
       log.info("Successfully retrieved {} wallets", wallets.size());
       return wallets.stream()
           .map(walletDtoMapper::toWalletResponseDto)
@@ -92,11 +92,9 @@ public class WalletApplicationService implements WalletService {
     try {
       Address address = Address.of(request.getAddress());
       
-      // Validate address uniqueness using domain service
       walletSecurityDomainService.validateAddressUniqueness(address, 
           addr -> walletRepository.existsByAddress(addr.getValue()));
       
-      // Validate wallet creation parameters using domain service
       walletSecurityDomainService.validateWalletCreation(
           address, 
           request.getPublicKey(), 
@@ -125,7 +123,6 @@ public class WalletApplicationService implements WalletService {
           .map(existingWallet -> {
             try {
               if (request.getPrivateKey() != null) {
-                // Validate key rotation using domain service
                 walletSecurityDomainService.validateKeyRotation(
                     request.getPrivateKey(), 
                     existingWallet.getPublicKey()
@@ -206,7 +203,6 @@ public class WalletApplicationService implements WalletService {
           .toList();
       log.info("Found {} pending transactions for address", pendingTransactions.size());
 
-      // Use domain service for balance calculations
       Balance confirmedBalance = walletBalanceDomainService.calculateConfirmedBalance(walletAddress, transactions);
       log.info("Calculated confirmed balance: {}", confirmedBalance.getValue());
       
@@ -251,14 +247,12 @@ public class WalletApplicationService implements WalletService {
   public void updateWalletBalancesAfterMining() {
     log.info("Updating wallet balances after mining");
     try {
-      List<Wallet> wallets = walletRepository.findByActiveTrue();
+      List<Wallet> wallets = walletRepository.findAll();
       List<Transaction> allTransactions = transactionRepository.findAll();
       log.info("Found {} wallets and {} transactions for balance update", wallets.size(), allTransactions.size());
 
-      // Use domain service for balance updates
       walletBalanceDomainService.updateWalletBalancesAfterMining(wallets, allTransactions);
       
-      // Save updated wallets
       for (Wallet wallet : wallets) {
         walletRepository.save(wallet);
         log.info("Updated wallet balance for {}: {}", wallet.getAddress().getValue(), wallet.getBalance().getValue());

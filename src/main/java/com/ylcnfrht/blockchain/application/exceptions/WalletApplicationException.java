@@ -13,7 +13,6 @@ public class WalletApplicationException extends ApplicationException {
         super(errorCode, message, userMessage, cause);
     }
     
-    // Static factory methods for common wallet errors
     public static WalletApplicationException walletNotFound(Long id) {
         return new WalletApplicationException(
             ErrorCode.WALLET_NOT_FOUND,
@@ -70,7 +69,6 @@ public class WalletApplicationException extends ApplicationException {
         );
     }
     
-    // Additional static factory methods for service layer
     public static WalletApplicationException getAllWalletsFailed(String reason) {
         return new WalletApplicationException(
             ErrorCode.GET_ALL_WALLETS_FAILED,

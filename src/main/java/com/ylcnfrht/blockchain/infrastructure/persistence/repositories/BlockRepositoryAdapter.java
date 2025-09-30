@@ -23,7 +23,6 @@ public class BlockRepositoryAdapter implements BlockRepositoryPort {
     this.mapper = mapper;
   }
 
-  // ReadRepository methods
   @Override
   public Optional<Block> findById(Id<Long> id) {
     return jpaRepository.findById(id.getValue()).map(mapper::toDomain);
@@ -44,12 +43,7 @@ public class BlockRepositoryAdapter implements BlockRepositoryPort {
     return jpaRepository.count();
   }
 
-  @Override
-  public List<Block> findByActiveTrue() {
-    return jpaRepository.findByActiveTrue().stream().map(mapper::toDomain).toList();
-  }
 
-  // Block-specific read methods
   @Override
   public Optional<Block> findByHash(Hash hash) {
     return jpaRepository.findByHash(hash.getValue()).map(mapper::toDomain);
@@ -70,7 +64,6 @@ public class BlockRepositoryAdapter implements BlockRepositoryPort {
     return (mined ? jpaRepository.findByMinedTrue() : jpaRepository.findByMinedFalse()).stream().map(mapper::toDomain).toList();
   }
 
-  // WriteRepository methods
   @Override
   public Block save(Block block) {
     return mapper.toDomain(jpaRepository.save(mapper.toEntity(block)));

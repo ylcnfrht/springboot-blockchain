@@ -32,13 +32,11 @@ public class WalletBalanceDomainService {
         BigDecimal balance = BigDecimal.ZERO;
 
         for (Transaction transaction : minedTransactions) {
-            // Subtract amount if this address is the sender
             if (transaction.getFromAddress() != null && 
                 address.equals(transaction.getFromAddress())) {
                 balance = balance.subtract(transaction.getAmount().getValue());
             }
             
-            // Add amount if this address is the receiver
             if (transaction.getToAddress() != null && 
                 address.equals(transaction.getToAddress())) {
                 balance = balance.add(transaction.getAmount().getValue());
@@ -59,20 +57,17 @@ public class WalletBalanceDomainService {
         BigDecimal pendingBalance = BigDecimal.ZERO;
 
         for (Transaction transaction : pendingTransactions) {
-            // Subtract amount if this address is the sender
             if (transaction.getFromAddress() != null && 
                 address.equals(transaction.getFromAddress())) {
                 pendingBalance = pendingBalance.subtract(transaction.getAmount().getValue());
             }
             
-            // Add amount if this address is the receiver
             if (transaction.getToAddress() != null && 
                 address.equals(transaction.getToAddress())) {
                 pendingBalance = pendingBalance.add(transaction.getAmount().getValue());
             }
         }
 
-        // Pending balance can be negative, so we need to handle this case
         if (pendingBalance.compareTo(BigDecimal.ZERO) < 0) {
             return Balance.of(BigDecimal.ZERO);
         }
@@ -88,7 +83,6 @@ public class WalletBalanceDomainService {
     public void updateWalletBalancesAfterMining(List<Wallet> wallets, List<Transaction> allTransactions) {
         for (Wallet wallet : wallets) {
             try {
-                // Filter transactions for this specific wallet
                 List<Transaction> walletTransactions = allTransactions.stream()
                     .filter(tx -> (tx.getFromAddress() != null && wallet.getAddress().equals(tx.getFromAddress())) ||
                                  (tx.getToAddress() != null && wallet.getAddress().equals(tx.getToAddress())))
@@ -97,9 +91,7 @@ public class WalletBalanceDomainService {
                 Balance newBalance = calculateConfirmedBalance(wallet.getAddress(), walletTransactions);
                 wallet.setBalance(newBalance);
             } catch (Exception e) {
-                // Log error but continue with other wallets
                 System.err.println("Error updating balance for wallet " + wallet.getAddress().getValue() + ": " + e.getMessage());
-                // Set balance to zero if there's an error
                 wallet.setBalance(Balance.of(BigDecimal.ZERO));
             }
         }

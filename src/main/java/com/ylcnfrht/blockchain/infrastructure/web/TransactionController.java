@@ -17,6 +17,8 @@ import com.ylcnfrht.blockchain.application.dtos.request.CreateTransactionRequest
 import com.ylcnfrht.blockchain.application.dtos.response.CreateTransactionResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.TransactionResponseDto;
 import com.ylcnfrht.blockchain.application.ports.TransactionService;
+import com.ylcnfrht.blockchain.infrastructure.web.result.ApiErrorCode;
+import com.ylcnfrht.blockchain.infrastructure.web.result.Result;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,112 +43,163 @@ public class TransactionController {
   @GetMapping
   @Operation(summary = "Get all transactions", description = "Retrieve all transactions including both pending and confirmed transactions")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successfully retrieved all transactions"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successfully retrieved all transactions", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<List<TransactionResponseDto>> getAllTransactions() {
+  public ResponseEntity<Result<List<TransactionResponseDto>>> getAllTransactions() {
     log.info("Getting all transactions");
-    return ResponseEntity.ok(transactionService.getAllTransactions());
+    try {
+      List<TransactionResponseDto> transactions = transactionService.getAllTransactions();
+      return ResponseEntity.ok(Result.success(transactions, "Transactions retrieved successfully"));
+    } catch (Exception e) {
+      log.error("Error getting all transactions", e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to retrieve transactions", ApiErrorCode.TRANSACTION_ERROR));
+    }
   }
 
   @GetMapping("/{id}")
   @Operation(summary = "Get transaction by ID", description = "Retrieve a specific transaction by its database ID")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Transaction found and returned"),
-      @ApiResponse(responseCode = "404", description = "Transaction not found"),
-      @ApiResponse(responseCode = "400", description = "Invalid transaction ID format")
+      @ApiResponse(responseCode = "200", description = "Transaction found and returned", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "404", description = "Transaction not found", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<TransactionResponseDto> getTransactionById(
+  public ResponseEntity<Result<TransactionResponseDto>> getTransactionById(
       @Parameter(description = "Database ID of the transaction", example = "1") @PathVariable Long id) {
     log.info("Getting transaction by id: {}", id);
-    return transactionService.getTransactionById(id)
-        .map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+    try {
+      return transactionService.getTransactionById(id)
+          .map(transaction -> ResponseEntity.ok(Result.success(transaction, "Transaction retrieved successfully")))
+          .orElse(ResponseEntity.status(404).body(Result.error("Transaction not found", ApiErrorCode.TRANSACTION_NOT_FOUND)));
+    } catch (Exception e) {
+      log.error("Error getting transaction by id: {}", id, e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to retrieve transaction", ApiErrorCode.TRANSACTION_ERROR));
+    }
   }
 
   @GetMapping("/hash/{hash}")
   @Operation(summary = "Get transaction by hash", description = "Retrieve a specific transaction by its cryptographic hash")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Transaction found and returned"),
-      @ApiResponse(responseCode = "404", description = "Transaction not found"),
-      @ApiResponse(responseCode = "400", description = "Invalid hash format")
+      @ApiResponse(responseCode = "200", description = "Transaction found and returned", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "404", description = "Transaction not found", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<TransactionResponseDto> getTransactionByHash(
+  public ResponseEntity<Result<TransactionResponseDto>> getTransactionByHash(
       @Parameter(description = "Cryptographic hash of the transaction", example = "abc123def...") @PathVariable String hash) {
     log.info("Getting transaction by hash: {}", hash);
-    return transactionService.getTransactionByHash(hash)
-        .map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+    try {
+      return transactionService.getTransactionByHash(hash)
+          .map(transaction -> ResponseEntity.ok(Result.success(transaction, "Transaction retrieved successfully")))
+          .orElse(ResponseEntity.status(404).body(Result.error("Transaction not found", ApiErrorCode.TRANSACTION_NOT_FOUND)));
+    } catch (Exception e) {
+      log.error("Error getting transaction by hash: {}", hash, e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to retrieve transaction", ApiErrorCode.TRANSACTION_ERROR));
+    }
   }
 
   @GetMapping("/address/{address}")
   @Operation(summary = "Get transactions by address", description = "Retrieve all transactions where the given address is either sender or receiver")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Transactions retrieved successfully"),
-      @ApiResponse(responseCode = "400", description = "Invalid address format")
+      @ApiResponse(responseCode = "200", description = "Transactions retrieved successfully", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<List<TransactionResponseDto>> getTransactionsByAddress(
+  public ResponseEntity<Result<List<TransactionResponseDto>>> getTransactionsByAddress(
       @Parameter(description = "Wallet address to search for", example = "wallet123abc...") @PathVariable String address) {
     log.info("Getting transactions for address: {}", address);
-    return ResponseEntity.ok(transactionService.getTransactionsByAddress(address));
+    try {
+      List<TransactionResponseDto> transactions = transactionService.getTransactionsByAddress(address);
+      return ResponseEntity.ok(Result.success(transactions, "Transactions retrieved successfully"));
+    } catch (Exception e) {
+      log.error("Error getting transactions for address: {}", address, e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to retrieve transactions", ApiErrorCode.TRANSACTION_ERROR));
+    }
   }
 
   @GetMapping("/pending")
   @Operation(summary = "Get pending transactions", description = "Retrieve all transactions that are not yet included in a mined block")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Pending transactions retrieved successfully"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Pending transactions retrieved successfully", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<List<TransactionResponseDto>> getPendingTransactions() {
+  public ResponseEntity<Result<List<TransactionResponseDto>>> getPendingTransactions() {
     log.info("Getting pending transactions");
-    return ResponseEntity.ok(transactionService.getPendingTransactions());
+    try {
+      List<TransactionResponseDto> transactions = transactionService.getPendingTransactions();
+      return ResponseEntity.ok(Result.success(transactions, "Pending transactions retrieved successfully"));
+    } catch (Exception e) {
+      log.error("Error getting pending transactions", e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to retrieve pending transactions", ApiErrorCode.TRANSACTION_ERROR));
+    }
   }
 
   @PostMapping
   @Operation(summary = "Create a new transaction", description = "Create a new transaction and add it to the pending transactions pool")
   @ApiResponses({
-      @ApiResponse(responseCode = "201", description = "Transaction created successfully", content = @Content(schema = @Schema(implementation = CreateTransactionResponseDto.class))),
-      @ApiResponse(responseCode = "400", description = "Invalid transaction data or insufficient balance"),
-      @ApiResponse(responseCode = "422", description = "Transaction validation failed")
+      @ApiResponse(responseCode = "201", description = "Transaction created successfully", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<CreateTransactionResponseDto> createTransaction(
+  public ResponseEntity<Result<CreateTransactionResponseDto>> createTransaction(
       @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Transaction details", required = true) @Valid @RequestBody CreateTransactionRequestDto request) {
     log.info("Creating transaction from {} to {} amount {}",
         request.getFromAddress(), request.getToAddress(), request.getAmount());
-    CreateTransactionResponseDto transaction = transactionService.createTransaction(request);
-    return ResponseEntity.status(HttpStatus.CREATED).body(transaction);
+    try {
+      CreateTransactionResponseDto transaction = transactionService.createTransaction(request);
+      return ResponseEntity.status(HttpStatus.CREATED)
+        .body(Result.success(transaction, "Transaction created successfully"));
+    } catch (Exception e) {
+      log.error("Error creating transaction from {} to {} amount {}",
+          request.getFromAddress(), request.getToAddress(), request.getAmount(), e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to create transaction", ApiErrorCode.TRANSACTION_CREATION_ERROR));
+    }
   }
 
   @PutMapping("/{id}")
   @Operation(summary = "Update a transaction", description = "Update a pending transaction (only pending transactions can be updated)")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Transaction updated successfully"),
-      @ApiResponse(responseCode = "404", description = "Transaction not found or already mined"),
-      @ApiResponse(responseCode = "400", description = "Invalid transaction data"),
-      @ApiResponse(responseCode = "409", description = "Transaction is already mined and cannot be updated")
+      @ApiResponse(responseCode = "200", description = "Transaction updated successfully", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "404", description = "Transaction not found", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<TransactionResponseDto> updateTransaction(
+  public ResponseEntity<Result<TransactionResponseDto>> updateTransaction(
       @Parameter(description = "Database ID of the transaction to update", example = "1") @PathVariable Long id,
       @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated transaction details", required = true) @Valid @RequestBody CreateTransactionRequestDto request) {
     log.info("Updating transaction with id: {}", id);
-    return transactionService.updateTransaction(id, request)
-        .map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+    try {
+      return transactionService.updateTransaction(id, request)
+          .map(transaction -> ResponseEntity.ok(Result.success(transaction, "Transaction updated successfully")))
+          .orElse(ResponseEntity.status(404).body(Result.error("Transaction not found", ApiErrorCode.TRANSACTION_NOT_FOUND)));
+    } catch (Exception e) {
+      log.error("Error updating transaction with id: {}", id, e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to update transaction", ApiErrorCode.TRANSACTION_UPDATE_ERROR));
+    }
   }
 
   @DeleteMapping("/{id}")
   @Operation(summary = "Delete a transaction", description = "Delete a pending transaction (only pending transactions can be deleted)")
   @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Transaction deleted successfully"),
-      @ApiResponse(responseCode = "404", description = "Transaction not found or already mined"),
-      @ApiResponse(responseCode = "409", description = "Transaction is already mined and cannot be deleted")
+      @ApiResponse(responseCode = "200", description = "Transaction deleted successfully", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "404", description = "Transaction not found", content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<Void> deleteTransaction(
+  public ResponseEntity<Result<Void>> deleteTransaction(
       @Parameter(description = "Database ID of the transaction to delete", example = "1") @PathVariable Long id) {
     log.info("Deleting transaction with id: {}", id);
-    if (transactionService.deleteTransaction(id)) {
-      return ResponseEntity.noContent().build();
+    try {
+      if (transactionService.deleteTransaction(id)) {
+        return ResponseEntity.ok(Result.success(null, "Transaction deleted successfully"));
+      }
+      return ResponseEntity.status(404).body(Result.error("Transaction not found", ApiErrorCode.TRANSACTION_NOT_FOUND));
+    } catch (Exception e) {
+      log.error("Error deleting transaction with id: {}", id, e);
+      return ResponseEntity.status(500)
+        .body(Result.error("Failed to delete transaction", ApiErrorCode.TRANSACTION_DELETION_ERROR));
     }
-    return ResponseEntity.notFound().build();
   }
 }

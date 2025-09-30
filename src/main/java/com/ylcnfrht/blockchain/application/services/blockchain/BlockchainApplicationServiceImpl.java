@@ -128,7 +128,7 @@ public class BlockchainApplicationServiceImpl implements BlockchainApplicationSe
       log.info("Previous hash: {}", previousHash != null ? previousHash.getValue() : "null");
 
       log.info("Starting mining with difficulty: {} and reward: {}", miningDifficulty, miningReward);
-      // Use domain service for mining
+      
       Block minedBlock = miningDomainService.mineBlock(
           pendingTransactions, 
           previousHash, 
@@ -143,7 +143,7 @@ public class BlockchainApplicationServiceImpl implements BlockchainApplicationSe
       log.info("Block saved with ID: {}", savedBlock.getId());
 
       log.info("Marking {} transactions as mined", pendingTransactions.size());
-      // Mark transactions as mined
+      
       for (Transaction tx : pendingTransactions) {
         tx.setMined(true);
         transactionRepository.save(tx);

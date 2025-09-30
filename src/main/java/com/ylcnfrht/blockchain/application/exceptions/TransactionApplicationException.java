@@ -13,7 +13,6 @@ public class TransactionApplicationException extends ApplicationException {
         super(errorCode, message, userMessage, cause);
     }
     
-    // Static factory methods for common transaction errors
     public static TransactionApplicationException transactionNotFound(Long id) {
         return new TransactionApplicationException(
             ErrorCode.TRANSACTION_NOT_FOUND,
@@ -70,7 +69,6 @@ public class TransactionApplicationException extends ApplicationException {
         );
     }
     
-    // Additional static factory methods for service layer
     public static TransactionApplicationException getAllTransactionsFailed(String reason) {
         return new TransactionApplicationException(
             ErrorCode.GET_ALL_TRANSACTIONS_FAILED,

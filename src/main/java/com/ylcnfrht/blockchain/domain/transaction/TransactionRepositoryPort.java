@@ -11,8 +11,6 @@ import com.ylcnfrht.blockchain.domain.wallet.valueobjects.Address;
 
 
 public interface TransactionRepositoryPort extends ReadRepository<Transaction, Id<Long>>, WriteRepository<Transaction, Id<Long>> {
-  
-  // Transaction-specific read methods
   Optional<Transaction> findByHash(Hash hash);
   List<Transaction> findByAddress(Address address);
   List<Transaction> findPending();

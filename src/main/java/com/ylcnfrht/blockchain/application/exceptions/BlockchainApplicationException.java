@@ -13,7 +13,6 @@ public class BlockchainApplicationException extends ApplicationException {
         super(errorCode, message, userMessage, cause);
     }
     
-    // Static factory methods for common blockchain errors
     public static BlockchainApplicationException blockNotFound(Long id) {
         return new BlockchainApplicationException(
             ErrorCode.BLOCK_NOT_FOUND,
@@ -70,7 +69,6 @@ public class BlockchainApplicationException extends ApplicationException {
         );
     }
     
-    // Additional static factory methods for service layer
     public static BlockchainApplicationException getAllBlocksFailed(String reason) {
         return new BlockchainApplicationException(
             ErrorCode.GET_ALL_BLOCKS_FAILED,

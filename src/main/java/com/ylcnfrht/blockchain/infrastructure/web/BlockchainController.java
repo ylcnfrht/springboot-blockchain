@@ -16,6 +16,8 @@ import com.ylcnfrht.blockchain.application.dtos.response.BlockResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.BlockchainStatsResponseDto;
 import com.ylcnfrht.blockchain.application.dtos.response.CreateBlockResponseDto;
 import com.ylcnfrht.blockchain.application.ports.BlockchainApplicationService;
+import com.ylcnfrht.blockchain.infrastructure.web.result.ApiErrorCode;
+import com.ylcnfrht.blockchain.infrastructure.web.result.Result;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,96 +42,154 @@ public class BlockchainController {
   @GetMapping("/blocks")
   @Operation(summary = "Get all blocks", description = "Retrieve all blocks in the blockchain ordered by creation time")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successfully retrieved all blocks"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successfully retrieved all blocks", 
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error",
+          content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<List<BlockResponseDto>> getAllBlocks() {
+  public ResponseEntity<Result<List<BlockResponseDto>>> getAllBlocks() {
     log.info("Getting all blocks");
     try {
       List<BlockResponseDto> blocks = blockchainService.getAllBlocks();
-      return ResponseEntity.ok(blocks);
+      return ResponseEntity.ok(Result.success(blocks, "Blocks retrieved successfully"));
     } catch (Exception e) {
       log.error("Error getting blocks", e);
-      return ResponseEntity.status(500).build();
+      return ResponseEntity.status(500)
+          .body(Result.error("Failed to retrieve blocks", ApiErrorCode.BLOCKCHAIN_ERROR));
     }
   }
 
   @GetMapping("/blocks/{id}")
   @Operation(summary = "Get block by ID", description = "Retrieve a specific block by its database ID")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Block found and returned"),
-      @ApiResponse(responseCode = "404", description = "Block not found"),
-      @ApiResponse(responseCode = "400", description = "Invalid block ID format")
+      @ApiResponse(responseCode = "200", description = "Block found and returned",
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "404", description = "Block not found",
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error",
+          content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<BlockResponseDto> getBlockById(
+  public ResponseEntity<Result<BlockResponseDto>> getBlockById(
       @Parameter(description = "Database ID of the block", example = "1") @PathVariable Long id) {
     log.info("Getting block by id: {}", id);
-    return blockchainService.getBlockById(id)
-        .map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+    try {
+      return blockchainService.getBlockById(id)
+          .map(block -> ResponseEntity.ok(Result.success(block, "Block retrieved successfully")))
+          .orElse(ResponseEntity.status(404).body(Result.error("Block not found", ApiErrorCode.BLOCK_NOT_FOUND)));
+    } catch (Exception e) {
+      log.error("Error getting block by id: {}", id, e);
+      return ResponseEntity.status(500)
+          .body(Result.error("Failed to retrieve block", ApiErrorCode.BLOCKCHAIN_ERROR));
+    }
   }
 
   @GetMapping("/blocks/hash/{hash}")
   @Operation(summary = "Get block by hash", description = "Retrieve a specific block by its cryptographic hash")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Block found and returned"),
-      @ApiResponse(responseCode = "404", description = "Block not found"),
-      @ApiResponse(responseCode = "400", description = "Invalid hash format")
+      @ApiResponse(responseCode = "200", description = "Block found and returned",
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "404", description = "Block not found",
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error",
+          content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<BlockResponseDto> getBlockByHash(
+  public ResponseEntity<Result<BlockResponseDto>> getBlockByHash(
       @Parameter(description = "Cryptographic hash of the block", example = "000abc123...") @PathVariable String hash) {
     log.info("Getting block by hash: {}", hash);
-    return blockchainService.getBlockByHash(hash)
-        .map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+    try {
+      return blockchainService.getBlockByHash(hash)
+          .map(block -> ResponseEntity.ok(Result.success(block, "Block retrieved successfully")))
+          .orElse(ResponseEntity.status(404).body(Result.error("Block not found", ApiErrorCode.BLOCK_NOT_FOUND)));
+    } catch (Exception e) {
+      log.error("Error getting block by hash: {}", hash, e);
+      return ResponseEntity.status(500)
+          .body(Result.error("Failed to retrieve block", ApiErrorCode.BLOCKCHAIN_ERROR));
+    }
   }
 
   @GetMapping("/blocks/latest")
   @Operation(summary = "Get latest block", description = "Retrieve the most recent block in the blockchain")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Latest block returned"),
-      @ApiResponse(responseCode = "404", description = "No blocks found in the blockchain")
+      @ApiResponse(responseCode = "200", description = "Latest block returned",
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "404", description = "No blocks found in the blockchain",
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Internal server error",
+          content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<BlockResponseDto> getLatestBlock() {
+  public ResponseEntity<Result<BlockResponseDto>> getLatestBlock() {
     log.info("Getting latest block");
-    return blockchainService.getLatestBlock()
-        .map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+    try {
+      return blockchainService.getLatestBlock()
+          .map(block -> ResponseEntity.ok(Result.success(block, "Latest block retrieved successfully")))
+          .orElse(ResponseEntity.status(404).body(Result.error("No blocks found", ApiErrorCode.NO_BLOCKS_FOUND)));
+    } catch (Exception e) {
+      log.error("Error getting latest block", e);
+      return ResponseEntity.status(500)
+          .body(Result.error("Failed to retrieve latest block", ApiErrorCode.BLOCKCHAIN_ERROR));
+    }
   }
 
   @PostMapping("/mine")
   @Operation(summary = "Mine a new block", description = "Mine all pending transactions into a new block and reward the miner")
   @ApiResponses({
-      @ApiResponse(responseCode = "201", description = "Block successfully mined", content = @Content(schema = @Schema(implementation = CreateBlockResponseDto.class))),
-      @ApiResponse(responseCode = "400", description = "Invalid miner address"),
-      @ApiResponse(responseCode = "500", description = "Mining operation failed")
+      @ApiResponse(responseCode = "201", description = "Block successfully mined", 
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Mining operation failed",
+          content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<CreateBlockResponseDto> mineBlock(
+  public ResponseEntity<Result<CreateBlockResponseDto>> mineBlock(
       @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Mining request with miner address", required = true) @Valid @RequestBody MineBlockRequestDto request) {
     log.info("Mining block for miner: {}", request.getMinerAddress());
-    CreateBlockResponseDto minedBlock = blockchainService.minePendingTransactions(request.getMinerAddress());
-    return ResponseEntity.status(HttpStatus.CREATED).body(minedBlock);
+    try {
+      CreateBlockResponseDto minedBlock = blockchainService.minePendingTransactions(request.getMinerAddress());
+      return ResponseEntity.status(HttpStatus.CREATED)
+          .body(Result.success(minedBlock, "Block mined successfully"));
+    } catch (Exception e) {
+      log.error("Error mining block for miner: {}", request.getMinerAddress(), e);
+      return ResponseEntity.status(500)
+          .body(Result.error("Failed to mine block", ApiErrorCode.MINING_ERROR));
+    }
   }
 
   @GetMapping("/validate")
   @Operation(summary = "Validate blockchain", description = "Check the integrity of the entire blockchain by validating all blocks and their connections")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Validation completed"),
-      @ApiResponse(responseCode = "500", description = "Validation failed due to server error")
+      @ApiResponse(responseCode = "200", description = "Validation completed",
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Validation failed due to server error",
+          content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<Boolean> validateChain() {
+  public ResponseEntity<Result<Boolean>> validateChain() {
     log.info("Validating blockchain");
-    return ResponseEntity.ok(blockchainService.isChainValid());
+    try {
+      boolean isValid = blockchainService.isChainValid();
+      return ResponseEntity.ok(Result.success(isValid, 
+          isValid ? "Blockchain is valid" : "Blockchain validation failed"));
+    } catch (Exception e) {
+      log.error("Error validating blockchain", e);
+      return ResponseEntity.status(500)
+          .body(Result.error("Failed to validate blockchain", ApiErrorCode.VALIDATION_ERROR));
+    }
   }
 
   @GetMapping("/stats")
   @Operation(summary = "Get blockchain statistics", description = "Retrieve comprehensive statistics about the blockchain including blocks, transactions, and configuration")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Statistics retrieved successfully", content = @Content(schema = @Schema(implementation = BlockchainStatsResponseDto.class))),
-      @ApiResponse(responseCode = "500", description = "Failed to retrieve statistics")
+      @ApiResponse(responseCode = "200", description = "Statistics retrieved successfully", 
+          content = @Content(schema = @Schema(implementation = Result.class))),
+      @ApiResponse(responseCode = "500", description = "Failed to retrieve statistics",
+          content = @Content(schema = @Schema(implementation = Result.class)))
   })
-  public ResponseEntity<BlockchainStatsResponseDto> getBlockchainStats() {
+  public ResponseEntity<Result<BlockchainStatsResponseDto>> getBlockchainStats() {
     log.info("Getting blockchain statistics");
-    return ResponseEntity.ok(blockchainService.getBlockchainStats());
+    try {
+      BlockchainStatsResponseDto stats = blockchainService.getBlockchainStats();
+      return ResponseEntity.ok(Result.success(stats, "Blockchain statistics retrieved successfully"));
+    } catch (Exception e) {
+      log.error("Error getting blockchain statistics", e);
+      return ResponseEntity.status(500)
+          .body(Result.error("Failed to retrieve blockchain statistics", ApiErrorCode.STATS_ERROR));
+    }
   }
 }

@@ -21,7 +21,6 @@ public class WalletSecurityDomainService {
      * @throws DomainException if validation fails
      */
     public void validateWalletCreation(Address address, String publicKey, String privateKey) {
-        // Validate address
         if (address == null) {
             throw new DomainException("Wallet address cannot be null");
         }
@@ -30,7 +29,6 @@ public class WalletSecurityDomainService {
             throw new DomainException("Invalid wallet address format");
         }
 
-        // Validate public key
         if (publicKey == null || publicKey.trim().isEmpty()) {
             throw new DomainException("Public key cannot be null or empty");
         }
@@ -39,7 +37,6 @@ public class WalletSecurityDomainService {
             throw new DomainException("Invalid public key format");
         }
 
-        // Validate private key
         if (privateKey == null || privateKey.trim().isEmpty()) {
             throw new DomainException("Private key cannot be null or empty");
         }
@@ -48,7 +45,6 @@ public class WalletSecurityDomainService {
             throw new DomainException("Invalid private key format");
         }
 
-        // Validate key pair relationship (simplified)
         if (!isValidKeyPair(publicKey, privateKey)) {
             throw new DomainException("Public and private keys do not form a valid key pair");
         }
@@ -78,7 +74,6 @@ public class WalletSecurityDomainService {
             throw new DomainException("Invalid current public key format");
         }
 
-        // Check if new private key is different from current
         if (newPrivateKey.equals(currentPublicKey)) {
             throw new DomainException("New private key cannot be the same as current public key");
         }
@@ -110,7 +105,6 @@ public class WalletSecurityDomainService {
      * @throws DomainException if security requirements are not met
      */
     public void validateWalletSecurity(Address address, String publicKey, String privateKey) {
-        // Check minimum key length
         if (publicKey.length() < 32) {
             throw new DomainException("Public key must be at least 32 characters long");
         }
@@ -119,7 +113,6 @@ public class WalletSecurityDomainService {
             throw new DomainException("Private key must be at least 32 characters long");
         }
 
-        // Check for common weak patterns
         if (containsWeakPatterns(publicKey)) {
             throw new DomainException("Public key contains weak security patterns");
         }
@@ -128,7 +121,6 @@ public class WalletSecurityDomainService {
             throw new DomainException("Private key contains weak security patterns");
         }
 
-        // Validate address security
         if (!isSecureAddress(address)) {
             throw new DomainException("Address does not meet security requirements");
         }
@@ -147,7 +139,6 @@ public class WalletSecurityDomainService {
 
         String addressValue = address.getValue().trim();
         
-        // Basic validation: address should not be empty and should have reasonable length
         return !addressValue.isEmpty() && 
                addressValue.length() >= 3 && 
                addressValue.length() <= 100 &&
@@ -168,7 +159,6 @@ public class WalletSecurityDomainService {
 
         String trimmedKey = key.trim();
         
-        // Basic validation: key should have reasonable length and format
         return trimmedKey.length() >= 3 && 
                trimmedKey.length() <= 2048 &&
                !trimmedKey.contains(" ") &&
@@ -184,7 +174,6 @@ public class WalletSecurityDomainService {
      * @return true if the keys form a valid pair
      */
     private boolean isValidKeyPair(String publicKey, String privateKey) {
-        // Simplified validation: keys should not be null
         return publicKey != null && privateKey != null;
     }
 
@@ -201,7 +190,6 @@ public class WalletSecurityDomainService {
 
         String lowerKey = key.toLowerCase();
         
-        // Check for common weak patterns
         return lowerKey.contains("password") ||
                lowerKey.contains("123456") ||
                lowerKey.contains("abcdef") ||
@@ -222,7 +210,6 @@ public class WalletSecurityDomainService {
 
         String addressValue = address.getValue();
         
-        // Check for minimum entropy (simplified)
         return addressValue.length() >= 20 && 
                !addressValue.matches(".*(.)\\1{3,}.*"); // No repeated characters
     }

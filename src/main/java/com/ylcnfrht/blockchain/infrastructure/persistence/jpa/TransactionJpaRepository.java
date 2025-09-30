@@ -11,7 +11,6 @@ import com.ylcnfrht.blockchain.infrastructure.persistence.entities.TransactionEn
 
 public interface TransactionJpaRepository extends JpaRepository<TransactionEntity, Long> {
   
-  // Read methods
   Optional<TransactionEntity> findByTransactionHash(String transactionHash);
 
   List<TransactionEntity> findByFromAddress(String fromAddress);
@@ -28,7 +27,6 @@ public interface TransactionJpaRepository extends JpaRepository<TransactionEntit
 
   List<TransactionEntity> findByMinedTrue();
   
-  // Custom queries
   @Query("SELECT t FROM TransactionEntity t WHERE t.mined = false ORDER BY t.timestamp ASC")
   List<TransactionEntity> findPendingTransactions();
   

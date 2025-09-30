@@ -129,7 +129,6 @@ public class Block extends BaseEntity<Id<Long>> {
     sb.append(nonce.getValue());
 
     for (Transaction tx : transactions) {
-      // Use transaction data instead of ID for hash calculation
       sb.append(tx.getFromAddress() != null ? tx.getFromAddress().getValue() : "");
       sb.append(tx.getToAddress() != null ? tx.getToAddress().getValue() : "");
       sb.append(tx.getAmount() != null ? tx.getAmount().getValue().toString() : "");

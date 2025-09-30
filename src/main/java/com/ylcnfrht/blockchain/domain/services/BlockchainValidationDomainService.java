@@ -22,17 +22,15 @@ public class BlockchainValidationDomainService {
      */
     public boolean isChainValid(List<Block> blocks) {
         if (blocks == null || blocks.isEmpty()) {
-            return true; // Empty blockchain is considered valid
+            return true;
         }
 
-        // Validate each block individually
         for (Block block : blocks) {
             if (!isBlockValid(block)) {
                 return false;
             }
         }
 
-        // Validate chain connections
         for (int i = 1; i < blocks.size(); i++) {
             Block currentBlock = blocks.get(i);
             Block previousBlock = blocks.get(i - 1);
@@ -56,27 +54,22 @@ public class BlockchainValidationDomainService {
             return false;
         }
 
-        // Check if block has valid hash
         if (block.getHash() == null) {
             return false;
         }
 
-        // Check if block is properly mined
         if (!block.isMined()) {
             return false;
         }
 
-        // Check if block has valid timestamp
         if (block.getTimestamp() == null) {
             return false;
         }
 
-        // Check if block has valid nonce
         if (block.getNonce() == null) {
             return false;
         }
 
-        // Validate block's internal state
         return block.isValid();
     }
 
@@ -92,7 +85,6 @@ public class BlockchainValidationDomainService {
             return false;
         }
 
-        // Check if current block's previous hash matches previous block's hash
         Hash currentPreviousHash = currentBlock.getPreviousHash();
         Hash previousBlockHash = previousBlock.getHash();
 
@@ -115,17 +107,14 @@ public class BlockchainValidationDomainService {
             return false;
         }
 
-        // Validate the new block itself
         if (!isBlockValid(newBlock)) {
             return false;
         }
 
-        // If this is the first block (genesis block)
         if (latestBlock == null) {
             return newBlock.getPreviousHash() == null;
         }
 
-        // Validate connection with the latest block
         return isBlockConnectionValid(newBlock, latestBlock);
     }
 
@@ -144,7 +133,6 @@ public class BlockchainValidationDomainService {
             return result;
         }
 
-        // Validate each block
         for (int i = 0; i < blocks.size(); i++) {
             Block block = blocks.get(i);
             if (!isBlockValid(block)) {
@@ -154,7 +142,6 @@ public class BlockchainValidationDomainService {
             }
         }
 
-        // Validate chain connections
         for (int i = 1; i < blocks.size(); i++) {
             Block currentBlock = blocks.get(i);
             Block previousBlock = blocks.get(i - 1);

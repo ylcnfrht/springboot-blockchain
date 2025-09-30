@@ -31,12 +31,10 @@ public class TransactionValidationDomainService {
                                           Amount amount,
                                           Balance currentBalance) {
         
-        // Validate receiver address
         if (toAddress == null) {
             throw new DomainException("Transaction receiver address cannot be null");
         }
 
-        // Validate amount
         if (amount == null) {
             throw new DomainException("Transaction amount cannot be null");
         }
@@ -45,13 +43,11 @@ public class TransactionValidationDomainService {
             throw new DomainException("Transaction amount must be positive");
         }
 
-        // Validate sender address (if not a mining reward)
         if (fromAddress != null) {
             if (fromAddress.equals(toAddress)) {
                 throw new DomainException("Sender and receiver addresses cannot be the same");
             }
 
-            // Check if sender has sufficient balance
             if (currentBalance == null) {
                 throw new DomainException("Current balance is required for transaction validation");
             }
@@ -144,12 +140,10 @@ public class TransactionValidationDomainService {
             return false;
         }
 
-        // For mining reward transactions, signature is not required
         if (transaction.getFromAddress() == null) {
             return true;
         }
 
-        // For regular transactions, signature is required
         return transaction.getSignature() != null && transaction.isValid();
     }
 
@@ -201,7 +195,6 @@ public class TransactionValidationDomainService {
 
         String addressValue = address.getValue();
         
-        // Basic validation: address should not be empty and should have reasonable length
         return !addressValue.trim().isEmpty() && 
                addressValue.length() >= 10 && 
                addressValue.length() <= 100;

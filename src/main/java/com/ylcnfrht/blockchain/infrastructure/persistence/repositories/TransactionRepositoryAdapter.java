@@ -24,7 +24,6 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
     this.mapper = mapper;
   }
 
-  // ReadRepository methods
   @Override
   public Optional<Transaction> findById(Id<Long> id) {
     return jpaRepository.findById(id.getValue()).map(mapper::toDomain);
@@ -45,12 +44,7 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
     return jpaRepository.count();
   }
 
-  @Override
-  public List<Transaction> findByActiveTrue() {
-    return jpaRepository.findByActiveTrue().stream().map(mapper::toDomain).toList();
-  }
 
-  // Transaction-specific read methods
   @Override
   public Optional<Transaction> findByHash(Hash hash) {
     return jpaRepository.findByTransactionHash(hash.getValue()).map(mapper::toDomain);
@@ -66,7 +60,6 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
     return jpaRepository.findByBlockIsNull().stream().map(mapper::toDomain).toList();
   }
 
-  // WriteRepository methods
   @Override
   public Transaction save(Transaction transaction) {
     return mapper.toDomain(jpaRepository.save(mapper.toEntity(transaction)));

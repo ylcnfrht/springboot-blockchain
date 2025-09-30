@@ -41,7 +41,6 @@ public class MiningDomainService {
                 pendingTransactions.size(), difficulty, miningReward);
         
         try {
-            // Create new block
             log.info("Creating new block with previous hash: {}", previousHash != null ? previousHash.getValue() : "null");
             Block newBlock;
             try {
@@ -52,7 +51,6 @@ public class MiningDomainService {
                 throw new RuntimeException("Failed to create block: " + e.getMessage(), e);
             }
             
-            // Add valid pending transactions to the block
             log.info("Adding {} pending transactions to block", pendingTransactions.size());
             for (Transaction transaction : pendingTransactions) {
                 try {
@@ -68,7 +66,6 @@ public class MiningDomainService {
                 }
             }
             
-            // Add mining reward transaction if miner address is provided
             if (minerAddress != null && !minerAddress.isEmpty()) {
                 log.info("Creating mining reward transaction for address: {}", minerAddress);
                 try {
@@ -84,12 +81,10 @@ public class MiningDomainService {
                 }
             }
             
-            // Perform proof-of-work
             log.info("Starting proof-of-work with difficulty: {}", difficulty);
             performProofOfWork(newBlock, difficulty);
             log.info("Proof-of-work completed");
             
-            // Mark block as mined
             log.info("Marking block as mined");
             newBlock.markAsMined(difficulty);
             log.info("Block marked as mined successfully");
@@ -109,7 +104,7 @@ public class MiningDomainService {
      */
     private void performProofOfWork(Block block, int difficulty) {
         log.info("Starting proof-of-work with difficulty: {}", difficulty);
-        int maxIterations = 1000000; // Limit iterations to prevent infinite loops
+        int maxIterations = 1000000;
         int iterations = 0;
         
         while (!meetsDifficulty(block, difficulty) && iterations < maxIterations) {
@@ -147,7 +142,6 @@ public class MiningDomainService {
      * @return the mining reward transaction
      */
     private Transaction createMiningRewardTransaction(Address minerAddress, Amount rewardAmount) {
-        // Mining reward transaction has no sender (fromAddress is null)
         return Transaction.create(null, minerAddress, rewardAmount);
     }
 

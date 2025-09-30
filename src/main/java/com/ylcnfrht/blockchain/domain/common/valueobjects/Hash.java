@@ -22,7 +22,6 @@ public class Hash extends BaseValueObject<String> {
     }
     
     private boolean isValidHash(String hash) {
-        // Temporarily relaxed validation to allow existing database hashes
         return hash != null && !hash.trim().isEmpty() && hash.length() >= 1;
     }
     

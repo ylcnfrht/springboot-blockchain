@@ -37,10 +37,4 @@ public interface ReadRepository<T, ID> {
      * @return total count
      */
     long count();
-    
-    /**
-     * Find all active entities
-     * @return List of active entities
-     */
-    List<T> findByActiveTrue();
 }
