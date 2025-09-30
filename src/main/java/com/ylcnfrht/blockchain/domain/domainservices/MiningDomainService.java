@@ -51,8 +51,19 @@ public class MiningDomainService {
                 throw new RuntimeException("Failed to create block: " + e.getMessage(), e);
             }
             
-            log.info("Adding {} pending transactions to block", pendingTransactions.size());
-            for (Transaction transaction : pendingTransactions) {
+            // Ensure deterministic order: sort pending transactions by timestamp ascending, then toAddress/fromAddress
+            var txOrder = java.util.Comparator
+                .comparing((com.ylcnfrht.blockchain.domain.transaction.Transaction t) -> t.getTimestamp().getValue())
+                .thenComparing(t -> t.getFromAddress() != null ? t.getFromAddress().getValue() : "")
+                .thenComparing(t -> t.getToAddress() != null ? t.getToAddress().getValue() : "")
+                .thenComparing(t -> t.getAmount().getValue());
+
+            var sortedPending = pendingTransactions.stream()
+                .sorted(txOrder)
+                .toList();
+
+            log.info("Adding {} pending transactions to block", sortedPending.size());
+            for (Transaction transaction : sortedPending) {
                 try {
                     if (transaction.isValid()) {
                         log.info("Adding valid transaction: {}", transaction.getId());

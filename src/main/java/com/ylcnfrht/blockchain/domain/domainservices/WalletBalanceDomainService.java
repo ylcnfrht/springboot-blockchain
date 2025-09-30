@@ -104,10 +104,8 @@ public class WalletBalanceDomainService {
      * @return true if the wallet has sufficient balance
      */
     public boolean hasEnoughBalance(Address address, BigDecimal amount, List<Transaction> transactions) {
-        // Calculate confirmed balance
         Balance confirmedBalance = calculateConfirmedBalance(address, transactions);
         
-        // Calculate pending balance (outgoing transactions that reduce available balance)
         List<Transaction> pendingOutgoing = transactions.stream()
             .filter(tx -> !tx.isMined() && 
                          tx.getFromAddress() != null && 

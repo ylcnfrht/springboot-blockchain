@@ -172,7 +172,8 @@ public class BlockchainApplicationServiceImpl implements BlockchainApplicationSe
     log.info("Validating blockchain integrity");
     try {
       List<Block> blocks = blockRepository.findAllOrderByIdDesc();
-      boolean isValid = blockchainValidationDomainService.isChainValid(blocks);
+  
+      boolean isValid = blockchainValidationDomainService.isChainValid(blocks, miningDifficulty);
       log.info("Blockchain validation result: {}", isValid ? "VALID" : "INVALID");
       return isValid;
     } catch (Exception e) {

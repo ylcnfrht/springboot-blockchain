@@ -140,18 +140,14 @@ public class TransactionValidationDomainService {
             return false;
         }
 
-        // Mining reward transactions don't need signatures
         if (transaction.getFromAddress() == null) {
             return true;
         }
 
-        // Transaction must have a signature and be valid
         if (transaction.getSignature() == null || !transaction.isValid()) {
             return false;
         }
-
-        // For now, we accept any non-null signature
-        // In a real implementation, this would verify the cryptographic signature
+        
         return true;
     }
 

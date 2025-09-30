@@ -6,12 +6,11 @@ import org.springframework.stereotype.Component;
 
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Id;
 import com.ylcnfrht.blockchain.domain.common.valueobjects.Timestamp;
+import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.domain.transaction.valueobjects.Amount;
 import com.ylcnfrht.blockchain.domain.transaction.valueobjects.Signature;
 import com.ylcnfrht.blockchain.domain.wallet.valueobjects.Address;
-import com.ylcnfrht.blockchain.domain.transaction.Transaction;
 import com.ylcnfrht.blockchain.infrastructure.persistence.entities.TransactionEntity;
-import com.ylcnfrht.blockchain.infrastructure.persistence.entities.BlockEntity;
 
 
 @Component
@@ -38,7 +37,6 @@ public class TransactionMapper {
     entity.setSignature(transaction.getSignature() != null ? transaction.getSignature().getValue() : null);
     entity.setTimestamp(transaction.getTimestamp() != null ? transaction.getTimestamp().getValue() : null);
     entity.setMined(transaction.isMined());
-    // block will be set by repository when needed (saveWithBlock)
     return entity;
   }
 }

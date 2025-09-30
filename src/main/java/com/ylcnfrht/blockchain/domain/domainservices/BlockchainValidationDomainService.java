@@ -13,33 +13,35 @@ import com.ylcnfrht.blockchain.domain.common.valueobjects.Hash;
  */
 @Service
 public class BlockchainValidationDomainService {
-
     /**
      * Validates the entire blockchain by checking all blocks and their connections.
      * 
      * @param blocks list of blocks in the blockchain (ordered by creation time)
      * @return true if the blockchain is valid, false otherwise
      */
-    public boolean isChainValid(List<Block> blocks) {
+    public boolean isChainValid(List<Block> blocks, int difficulty) {
+        blocks = new java.util.ArrayList<>(blocks);
+        java.util.Collections.reverse(blocks);
+
         if (blocks == null || blocks.isEmpty()) {
             return true;
         }
 
-        for (Block block : blocks) {
-            if (!isBlockValid(block)) {
+        for (int i = 0; i < blocks.size(); i++) {
+            Block b = blocks.get(i);
+            if (b == null || b.getHash() == null || !b.isMined()) {
                 return false;
             }
-        }
-
-        for (int i = 1; i < blocks.size(); i++) {
-            Block currentBlock = blocks.get(i);
-            Block previousBlock = blocks.get(i - 1);
-            
-            if (!isBlockConnectionValid(currentBlock, previousBlock)) {
+            if (!b.meetsDifficulty(difficulty)) {
                 return false;
             }
+            if (i > 0) {
+                Block prev = blocks.get(i - 1);
+                if (!isBlockConnectionValid(b, prev)) {
+                    return false;
+                }
+            }
         }
-
         return true;
     }
 
